@@ -1,0 +1,95 @@
+{
+  "name": "chatbot-at",
+  "version": "2.0",
+  "nodes": [
+    {
+      "id": "n1",
+      "type": "message",
+      "x": 24.19749869723813,
+      "y": 4.0891089108910705,
+      "label": "Primeiro contato",
+      "content": "Olá! seja bem vindo ao assistente de atendimento Eletrofrio.",
+      "next": "n2"
+    },
+    {
+      "id": "n2",
+      "type": "input",
+      "x": 23.18759770713916,
+      "y": 150.54351224596144,
+      "label": "",
+      "content": "Para começar o atendimento informe seu nome:",
+      "saveAs": "nome",
+      "next": "n4"
+    },
+    {
+      "id": "n4",
+      "type": "choice",
+      "x": 23.5528921313184,
+      "y": 346.75924960917143,
+      "label": "",
+      "content": "{{nome}}  vou precisar do número do pedido, o mesmo possui 8 caracteres numéricos. Conseguiu localizar?",
+      "next": null,
+      "choices": [
+        {
+          "id": "c1779237913762",
+          "label": "Sim,  já consegui",
+          "next": "n1779238475377"
+        },
+        {
+          "id": "c1779237918795",
+          "label": "Não, preciso de ajuda",
+          "next": "n1779238378361"
+        }
+      ]
+    },
+    {
+      "id": "n1779238378361",
+      "type": "message",
+      "x": 23.018306636155728,
+      "y": 566.8009153318078,
+      "content": "O  número do pedido está em uma etiqueta dentro da casa de maquinas",
+      "next": "n1779239013228",
+      "label": "Ajuda número do pedido"
+    },
+    {
+      "id": "n1779238475377",
+      "type": "input",
+      "x": 286.1464530892448,
+      "y": 380.0663615560642,
+      "content": "Informe o número do pedido:",
+      "next": "n1779239475986",
+      "label": "Informe o pedido",
+      "saveAs": "pedido"
+    },
+    {
+      "id": "n1779239013228",
+      "type": "choice",
+      "x": 279.6453089244851,
+      "y": 574.3638443935927,
+      "content": "E agora conseguiu encontrar?",
+      "next": null,
+      "label": "",
+      "choices": [
+        {
+          "id": "c1779239053617",
+          "label": "Sim",
+          "next": "n1779238475377"
+        },
+        {
+          "id": "c1779239063799",
+          "label": "Não",
+          "next": null
+        }
+      ]
+    },
+    {
+      "id": "n1779239475986",
+      "type": "message",
+      "x": 559,
+      "y": 387,
+      "content": "Olá! Como posso ajudar {{pedido}}?",
+      "next": null,
+      "label": ""
+    }
+  ]
+}
