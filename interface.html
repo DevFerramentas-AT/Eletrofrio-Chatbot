@@ -125,7 +125,7 @@ html, body {
 .dot-choice   { background: var(--pink); }
 .dot-setvar   { background: var(--amber); }
 .dot-end      { background: var(--gray); }
-.dot-timer    { background: #e84b6e; }
+
 .sidebar-divider { height: 1px; background: var(--border); margin: 8px 10px; }
 
 /* ── Canvas ── */
@@ -193,8 +193,7 @@ html, body {
 .node-choice  .node-header { background: rgba(224,106,170,0.06); }
 .node-setvar  .node-header { background: rgba(232,184,75,0.06); }
 .node-end     .node-header { background: rgba(102,102,110,0.06); }
-.node-timer   .node-header { background: rgba(232,75,110,0.08); }
-.node-timer-meta { padding: 0 10px 8px; font-size: 11px; color: #e84b6e; display: flex; gap: 8px; align-items: center; }
+
 
 /* chat timer bar */
 .chat-timer-wrap { align-self: stretch; padding: 0 4px; margin: 2px 0; }
@@ -399,9 +398,78 @@ html, body {
 .arrow-label {
   font-size: 10px; fill: var(--text3);
   font-family: 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
 }
 
-/* ── Save status ── */
+/* ── Validation editor ── */
+.validation-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.validation-row {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.validation-row-head {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: center; gap: 6px;
+}
+.validation-row-head select {
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 11.5px;
+  padding: 4px 6px; outline: none; font-family: inherit; width: 100%;
+}
+.validation-row-head select:focus { border-color: var(--accent); }
+.validation-params { display: flex; flex-direction: column; gap: 5px; }
+.validation-param-row {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 6px; align-items: center;
+}
+.validation-param-row label { font-size: 11px; color: var(--text3); white-space: nowrap; }
+.validation-param-row input, .validation-param-row select {
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 11.5px;
+  padding: 4px 6px; outline: none; font-family: inherit; width: 100%;
+}
+.validation-param-row input:focus, .validation-param-row select:focus { border-color: var(--accent); }
+.validation-error-row {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 6px; align-items: center;
+}
+.validation-error-row label { font-size: 11px; color: #e84b6e; white-space: nowrap; }
+.validation-error-row input { 
+  background: var(--bg4); border: 1px solid rgba(232,75,110,0.25);
+  border-radius: 4px; color: var(--text); font-size: 11.5px;
+  padding: 4px 6px; outline: none; font-family: inherit; width: 100%;
+}
+.validation-error-row input:focus { border-color: #e84b6e; }
+.validation-fail-row {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 6px; align-items: center;
+}
+.validation-fail-row label { font-size: 11px; color: var(--text3); white-space: nowrap; }
+.validation-fail-row select {
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text); font-size: 11.5px;
+  padding: 4px 6px; outline: none; font-family: inherit; width: 100%;
+}
+.validation-fail-row select:focus { border-color: var(--accent); }
+.btn-add-validation {
+  width: 100%; padding: 6px; border-radius: var(--radius-sm);
+  background: rgba(24,173,232,0.10); border: 1px solid rgba(24,173,232,0.25);
+  color: var(--accent); font-size: 12px; cursor: pointer; font-family: inherit; transition: all .15s;
+}
+.btn-add-validation:hover { background: rgba(24,173,232,0.18); }
+/* badge no card do nó */
+.node-validation-badge {
+  padding: 0 10px 6px; display: flex; flex-wrap: wrap; gap: 4px;
+}
+.node-validation-tag {
+  font-size: 10px; padding: 2px 7px; border-radius: 20px;
+  background: rgba(24,173,232,0.10); color: var(--accent);
+  border: 1px solid rgba(24,173,232,0.25);
+}
 #save-status {
   font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px;
   padding: 4px 8px; border-radius: var(--radius-sm); transition: color .3s;
@@ -480,7 +548,6 @@ html, body {
       <div class="block-item" draggable="true" data-type="ai"><span class="block-dot dot-ai"></span>Resposta IA</div>
       <div class="block-item" draggable="true" data-type="choice"><span class="block-dot dot-choice"></span>Múltipla escolha</div>
       <div class="block-item" draggable="true" data-type="setvar"><span class="block-dot dot-setvar"></span>Atribuir variável</div>
-      <div class="block-item" draggable="true" data-type="timer"><span class="block-dot dot-timer"></span>Temporizador</div>
       <div class="block-item" draggable="true" data-type="end"><span class="block-dot dot-end"></span>Fim</div>
     </div>
     <div class="sidebar-divider"></div>
@@ -581,7 +648,6 @@ const NODE_TYPES = {
   ai:      { label: 'Resposta IA',      dot: 'dot-ai',      cls: 'node-ai',      def: '{{ia: Responda de forma amigável}}' },
   choice:  { label: 'Múltipla escolha', dot: 'dot-choice',  cls: 'node-choice',  def: 'Escolha uma opção:' },
   setvar:  { label: 'Atribuir variável',dot: 'dot-setvar',  cls: 'node-setvar',  def: '' },
-  timer:   { label: 'Temporizador',     dot: 'dot-timer',   cls: 'node-timer',   def: 'Aguardando resposta do cliente…' },
   end:     { label: 'Fim',              dot: 'dot-end',     cls: 'node-end',     def: 'Conversa encerrada. Até mais! 👋' }
 };
 
@@ -709,12 +775,18 @@ function render() {
       saveAsBadge = `<div style="padding:0 10px 6px"><span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)">→ {{${n.saveAs}}}</span></div>`;
     }
 
-    // timer node meta
-    let timerMeta = '';
-    if (n.type === 'timer') {
-      const secs = n.timerSeconds || 30;
-      const action = n.timerAction === 'next' ? '→ próximo bloco' : '⊗ encerrar';
-      timerMeta = `<div class="node-timer-meta">⏱ ${secs}s • ${action}</div>`;
+    // timeout badge for input/choice
+    let timeoutBadge = '';
+    if ((n.type === 'input' || n.type === 'choice') && n.timeoutSeconds) {
+      timeoutBadge = `<div style="padding:0 10px 6px"><span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(232,75,110,0.10);color:#e84b6e;border:1px solid rgba(232,75,110,0.25)">⏱ ${n.timeoutSeconds}s</span></div>`;
+    }
+
+    // validation badges for input
+    let validationBadge = '';
+    if (n.type === 'input' && n.validations && n.validations.length) {
+      const VLABELS = { minLen:'min', maxLen:'max', onlyLetters:'só letras', onlyNumbers:'só números', onlyAlpha:'letras+números', blockedChars:'chars proibidos', regex:'regex' };
+      const tags = n.validations.map(v => `<span class="node-validation-tag">✓ ${VLABELS[v.type] || v.type}</span>`).join('');
+      validationBadge = `<div class="node-validation-badge">${tags}</div>`;
     }
 
     el.innerHTML = `
@@ -724,7 +796,8 @@ function render() {
       </div>
       ${n.type !== 'setvar' ? `<div class="node-body${isAI ? ' muted' : ''}">${preview}</div>` : ''}
       ${saveAsBadge}
-      ${timerMeta}
+      ${timeoutBadge}
+      ${validationBadge}
       ${choicesHTML}
       ${setvarHTML}
       ${foot ? `<div class="node-footer">${foot}</div>` : ''}`;
@@ -748,12 +821,95 @@ function applyTransform() {
 
 function drawArrows() {
   const svg = document.getElementById('svg-arrows');
-  svg.querySelectorAll('path,text.arrow-label').forEach(e => e.remove());
+  svg.querySelectorAll('path,text.arrow-label,circle.arrow-dot').forEach(e => e.remove());
 
-  function drawCurve(ax, ay, bx, by, color, label, isSelected) {
-    const cy = (ay + by) / 2;
+  const R = 8; // corner radius
+
+  // Build orthogonal path: saída pela base, entrada pelo topo
+  // Usa segmentos horizontais/verticais com cantos arredondados
+  function orthogonalPath(ax, ay, bx, by, aEl, bEl, aNode, bNode) {
+    const GAP = 24;      // distância mínima antes de virar
+    const SIDE_OFF = 18; // offset lateral para contornar blocos
+
+    const dx = bx - ax;
+    const dy = by - ay;
+
+    // Caso simples: destino está abaixo e não há sobreposição horizontal
+    // Sai reto para baixo, vai horizontal, entra reto
+    if (dy > GAP * 2) {
+      const midY = ay + GAP + Math.max(0, (dy - GAP * 2) / 2);
+      // verifica se os centros estão razoavelmente alinhados
+      if (Math.abs(dx) < 4) {
+        // linha reta vertical
+        return `M${ax},${ay} L${bx},${by}`;
+      }
+      // L com dois cantos
+      const c1x = ax, c1y = midY;
+      const c2x = bx, c2y = midY;
+      return roundedPath([
+        [ax, ay],
+        [c1x, c1y],
+        [c2x, c2y],
+        [bx, by]
+      ], R);
+    }
+
+    // Caso difícil: destino está acima, ao lado, ou muito próximo
+    // Rota pelo lado: desce GAP, vai pra lateral, sobe, entra pelo topo
+    const aLeft  = aNode.x;
+    const aRight = aNode.x + (aEl ? aEl.offsetWidth : 210);
+    const bLeft  = bNode.x;
+    const bRight = bNode.x + (bEl ? bEl.offsetWidth : 210);
+
+    // Escolhe o lado de saída lateral baseado em qual lado tem mais espaço
+    const spaceRight = Math.max(aRight, bRight) + SIDE_OFF;
+    const spaceLeft  = Math.min(aLeft, bLeft) - SIDE_OFF;
+    const useRight   = dx >= 0 || (aRight - bRight) < (bLeft - aLeft);
+
+    const sideX = useRight ? spaceRight : spaceLeft;
+    const exitY = ay + GAP;
+    const entryY = by - GAP;
+
+    return roundedPath([
+      [ax, ay],
+      [ax, exitY],
+      [sideX, exitY],
+      [sideX, entryY],
+      [bx, entryY],
+      [bx, by]
+    ], R);
+  }
+
+  // Constrói path SVG com cantos arredondados em cada vértice intermediário
+  function roundedPath(pts, r) {
+    if (pts.length < 2) return '';
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const [px, py] = pts[i - 1];
+      const [cx, cy] = pts[i];
+      const [nx, ny] = pts[i + 1];
+      // vetores de entrada e saída
+      const inDx = cx - px, inDy = cy - py;
+      const outDx = nx - cx, outDy = ny - cy;
+      const inLen  = Math.sqrt(inDx * inDx + inDy * inDy);
+      const outLen = Math.sqrt(outDx * outDx + outDy * outDy);
+      if (inLen < 1 || outLen < 1) { d += ` L${cx},${cy}`; continue; }
+      const rr = Math.min(r, inLen / 2, outLen / 2);
+      const bx = cx - (inDx / inLen) * rr;
+      const by = cy - (inDy / inLen) * rr;
+      const ex = cx + (outDx / outLen) * rr;
+      const ey = cy + (outDy / outLen) * rr;
+      d += ` L${bx},${by} Q${cx},${cy} ${ex},${ey}`;
+    }
+    const last = pts[pts.length - 1];
+    d += ` L${last[0]},${last[1]}`;
+    return d;
+  }
+
+  function drawConnector(ax, ay, bx, by, aEl, bEl, aNode, bNode, color, label, isSelected) {
+    const d = orthogonalPath(ax, ay, bx, by, aEl, bEl, aNode, bNode);
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M${ax},${ay} C${ax},${cy} ${bx},${cy} ${bx},${by}`);
+    path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', color);
     path.setAttribute('stroke-width', isSelected ? '2' : '1.5');
@@ -761,14 +917,25 @@ function drawArrows() {
     path.setAttribute('marker-end', `url(#${markerId})`);
     svg.appendChild(path);
 
+    // ponto de origem
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', ax); dot.setAttribute('cy', ay);
+    dot.setAttribute('r', '3'); dot.setAttribute('fill', color);
+    dot.setAttribute('class', 'arrow-dot');
+    svg.appendChild(dot);
+
     if (label) {
-      const lx = (ax + bx) / 2;
-      const ly = (ay + by) / 2;
+      // coloca o label no primeiro segmento horizontal após a saída
+      const lx = ax + (bx - ax) * 0.25;
+      const ly = ay + 20;
       const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      t.setAttribute('x', lx);
-      t.setAttribute('y', ly - 4);
+      t.setAttribute('x', lx); t.setAttribute('y', ly);
       t.setAttribute('text-anchor', 'middle');
       t.setAttribute('class', 'arrow-label');
+      // fundo para legibilidade
+      t.setAttribute('paint-order', 'stroke');
+      t.setAttribute('stroke', 'var(--bg)');
+      t.setAttribute('stroke-width', '4');
       t.textContent = label.length > 14 ? label.slice(0, 14) + '…' : label;
       svg.appendChild(t);
     }
@@ -788,7 +955,7 @@ function drawArrows() {
         const ay = n.y + aEl.offsetHeight;
         const bx = bNode.x + bEl.offsetWidth / 2;
         const by = bNode.y;
-        drawCurve(ax, ay, bx, by, isSel ? '#7c6ee6' : '#333345', null, isSel);
+        drawConnector(ax, ay, bx, by, aEl, bEl, n, bNode, isSel ? '#7c6ee6' : '#3a3a52', null, isSel);
       }
     }
 
@@ -803,7 +970,7 @@ function drawArrows() {
         const ay = n.y + aEl.offsetHeight;
         const bx = bNode.x + bEl.offsetWidth / 2;
         const by = bNode.y;
-        drawCurve(ax, ay, bx, by, isSel ? '#e06aaa' : '#5a3a4a', c.label, isSel);
+        drawConnector(ax, ay, bx, by, aEl, bEl, n, bNode, isSel ? '#e06aaa' : '#5a3a4a', c.label, isSel);
       });
     }
   });
@@ -851,6 +1018,7 @@ function renderInspector(id) {
     `<span class="tag tag-${n.type}">${t.label}</span>`;
 
   const typeOptions = Object.entries(NODE_TYPES)
+    .filter(([k]) => k !== 'timer')
     .map(([k, v]) => `<option value="${k}"${k === n.type ? ' selected' : ''}>${v.label}</option>`).join('');
 
   // next selector (used for non-choice nodes)
@@ -919,7 +1087,74 @@ function renderInspector(id) {
       </div>`;
   }
 
-  // ── next field (not for choice) ──
+  // ── Validation editor for input ──
+  let validationEditor = '';
+  if (n.type === 'input') {
+    const nodeOpts = `<option value="">— nenhum (repetir bloco) —</option>` +
+      nodes.filter(x => x.id !== id).map(x =>
+        `<option value="${x.id}">${NODE_TYPES[x.type].label}${x.label ? ' ('+x.label+')' : ' ('+x.id.slice(-4)+')'}</option>`
+      ).join('');
+
+    const vrows = (n.validations || []).map((v, i) => {
+      // params specific to each type
+      let params = '';
+      if (v.type === 'minLen') {
+        params = `<div class="validation-param-row"><label>Mín. caracteres</label><input type="number" min="1" value="${v.min || 1}" onchange="updateValidation('${id}',${i},'min',+this.value)"></div>`;
+      } else if (v.type === 'maxLen') {
+        params = `<div class="validation-param-row"><label>Máx. caracteres</label><input type="number" min="1" value="${v.max || 100}" onchange="updateValidation('${id}',${i},'max',+this.value)"></div>`;
+      } else if (v.type === 'regex') {
+        params = `
+          <div class="validation-param-row">
+            <label>Expressão</label>
+            <input type="text" placeholder="ex: ^\\d{11}$" value="${(v.pattern||'').replace(/"/g,'&quot;')}" onchange="updateValidation('${id}',${i},'pattern',this.value)">
+          </div>`;
+      } else if (v.type === 'blockedChars') {
+        params = `
+          <div class="validation-param-row">
+            <label>Chars proibidos</label>
+            <input type="text" placeholder="ex: @#$%!" value="${(v.blocked||'').replace(/"/g,'&quot;')}" onchange="updateValidation('${id}',${i},'blocked',this.value)">
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;padding-left:2px">Se qualquer um desses caracteres aparecer na resposta, a validação falha.</div>`;
+      }
+      // onFail dest
+      const failOpts = `<option value="">— repetir bloco —</option>` +
+        nodes.filter(x => x.id !== id).map(x =>
+          `<option value="${x.id}"${x.id === v.onFail ? ' selected' : ''}>${NODE_TYPES[x.type].label} (${x.id.slice(-4)})</option>`
+        ).join('');
+
+      return `<div class="validation-row">
+        <div class="validation-row-head">
+          <select onchange="updateValidation('${id}',${i},'type',this.value)">
+            <option value="minLen"${v.type==='minLen'?' selected':''}>Mínimo de caracteres</option>
+            <option value="maxLen"${v.type==='maxLen'?' selected':''}>Máximo de caracteres</option>
+            <option value="onlyLetters"${v.type==='onlyLetters'?' selected':''}>Somente letras</option>
+            <option value="onlyNumbers"${v.type==='onlyNumbers'?' selected':''}>Somente números</option>
+            <option value="onlyAlpha"${v.type==='onlyAlpha'?' selected':''}>Letras e números</option>
+            <option value="blockedChars"${v.type==='blockedChars'?' selected':''}>Caracteres proibidos</option>
+            <option value="regex"${v.type==='regex'?' selected':''}>Expressão regular (avançado)</option>
+          </select>
+          <button class="choice-del-btn" onclick="removeValidation('${id}',${i})">✕</button>
+        </div>
+        <div class="validation-params">${params}</div>
+        <div class="validation-error-row">
+          <label>Msg. erro</label>
+          <input type="text" placeholder="Entrada inválida, tente novamente." value="${(v.errorMsg||'').replace(/"/g,'&quot;')}" onchange="updateValidation('${id}',${i},'errorMsg',this.value)">
+        </div>
+        <div class="validation-fail-row">
+          <label>Se inválido →</label>
+          <select onchange="updateValidation('${id}',${i},'onFail',this.value)">${failOpts}</select>
+        </div>
+      </div>`;
+    }).join('');
+
+    validationEditor = `
+      <div class="inspector-divider"></div>
+      <div class="field">
+        <label>✓ Validações de entrada</label>
+        <div class="validation-rows" id="validation-rows-${id}">${vrows}</div>
+        <button class="btn-add-validation" onclick="addValidation('${id}')">+ Adicionar validação</button>
+      </div>`;
+  }
   const nextField = n.type !== 'choice' ? `
     <div class="field">
       <label>Próximo bloco</label>
@@ -932,26 +1167,19 @@ function renderInspector(id) {
       <textarea id="f-content">${n.content}</textarea>
     </div>` : '';
 
-  // ── Timer editor ──
-  let timerEditor = '';
-  if (n.type === 'timer') {
-    const nextOptions2 = '<option value="">— encerrar conversa —</option>' +
-      nodes.filter(x => x.id !== id).map(x =>
-        `<option value="${x.id}"${x.id === n.timerOnExpire ? ' selected' : ''}>${NODE_TYPES[x.type].label}${x.label ? ' ('+x.label+')' : ' ('+x.id.slice(-4)+')'}</option>`
-      ).join('');
-    timerEditor = `
+  // ── Timeout editor for input and choice ──
+  let timeoutEditor = '';
+  if (n.type === 'input' || n.type === 'choice') {
+    timeoutEditor = `
       <div class="inspector-divider"></div>
       <div class="field">
-        <label>Tempo limite (segundos)</label>
-        <input type="number" id="f-timer-secs" min="5" max="3600" value="${n.timerSeconds || 30}">
+        <label>⏱ Tempo limite de resposta</label>
+        <input type="number" id="f-timeout-secs" min="0" max="3600" placeholder="0 = sem limite" value="${n.timeoutSeconds || ''}">
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">Segundos. Deixe 0 ou vazio para sem limite.</div>
       </div>
       <div class="field">
         <label>Mensagem ao expirar</label>
-        <textarea id="f-timer-msg" rows="2">${n.timerMsg || 'Tempo esgotado. Encerrando conversa...'}</textarea>
-      </div>
-      <div class="field">
-        <label>Ao expirar, ir para</label>
-        <select id="f-timer-expire">${nextOptions2}</select>
+        <textarea id="f-timeout-msg" rows="2" placeholder="Tempo esgotado. Encerrando conversa...">${n.timeoutMsg || ''}</textarea>
       </div>`;
   }
 
@@ -966,10 +1194,11 @@ function renderInspector(id) {
     </div>
     ${contentField}
     ${saveAsField}
+    ${validationEditor}
     ${nextField}
     ${choiceEditor}
     ${setvarEditor}
-    ${timerEditor}
+    ${timeoutEditor}
     <div class="inspector-divider"></div>
     <button class="btn-save" onclick="saveNode('${id}')">✓ Salvar alterações</button>
     <button class="btn-del"  onclick="deleteNode('${id}')">✕ Excluir bloco</button>`;
@@ -983,9 +1212,12 @@ function saveNode(id) {
   if (document.getElementById('f-content')) n.content = document.getElementById('f-content').value;
   if (document.getElementById('f-next'))    n.next    = document.getElementById('f-next').value || null;
   if (document.getElementById('f-saveAs'))  n.saveAs  = document.getElementById('f-saveAs').value.trim();
-  if (document.getElementById('f-timer-secs')) n.timerSeconds = parseInt(document.getElementById('f-timer-secs').value) || 30;
-  if (document.getElementById('f-timer-msg'))  n.timerMsg     = document.getElementById('f-timer-msg').value;
-  if (document.getElementById('f-timer-expire')) n.timerOnExpire = document.getElementById('f-timer-expire').value || null;
+  if (document.getElementById('f-timeout-secs')) {
+    const t = parseInt(document.getElementById('f-timeout-secs').value) || 0;
+    n.timeoutSeconds = t > 0 ? t : null;
+  }
+  if (document.getElementById('f-timeout-msg'))  n.timeoutMsg = document.getElementById('f-timeout-msg').value || null;
+  // validations are updated live via updateValidation(); nothing extra needed here
   render(); scheduleAutoSave();
 }
 
@@ -1025,6 +1257,42 @@ function updateAssignment(nodeId, idx, field, value) {
   renderVarsList(); scheduleAutoSave();
 }
 
+// ── Validation helpers ──
+function addValidation(nodeId) {
+  const n = nodes.find(x => x.id === nodeId);
+  if (!n.validations) n.validations = [];
+  n.validations.push({ type: 'minLen', min: 1, errorMsg: '', onFail: null });
+  render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 50);
+}
+function removeValidation(nodeId, idx) {
+  const n = nodes.find(x => x.id === nodeId);
+  n.validations.splice(idx, 1);
+  render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 50);
+}
+function updateValidation(nodeId, idx, field, value) {
+  const n = nodes.find(x => x.id === nodeId);
+  if (!n.validations || !n.validations[idx]) return;
+  // campos de rota usam null quando vazio; campos de texto aceitam string vazia
+  const routeFields = ['onFail'];
+  n.validations[idx][field] = routeFields.includes(field) ? (value || null) : value;
+  // if type changed, reset type-specific params and re-render inspector
+  if (field === 'type') {
+    const v = n.validations[idx];
+    if (value === 'minLen')       { v.min = v.min || 1; delete v.max; delete v.pattern; delete v.blocked; }
+    else if (value === 'maxLen')  { v.max = v.max || 100; delete v.min; delete v.pattern; delete v.blocked; }
+    else if (value === 'regex')   { v.pattern = v.pattern || ''; delete v.min; delete v.max; delete v.blocked; }
+    else if (value === 'blockedChars') { v.blocked = v.blocked || ''; delete v.min; delete v.max; delete v.pattern; }
+    else { delete v.min; delete v.max; delete v.pattern; delete v.blocked; }
+    render(); scheduleAutoSave();
+    setTimeout(() => renderInspector(nodeId), 50);
+  } else {
+    // apenas persiste sem re-renderizar, para não destruir o campo em edição
+    scheduleAutoSave();
+  }
+}
+
 function deleteNode(id) {
   nodes = nodes.filter(x => x.id !== id);
   nodes.forEach(n => {
@@ -1050,7 +1318,6 @@ function addNode(type = 'message', x, y) {
   if (type === 'choice')  base.choices     = [];
   if (type === 'setvar')  base.assignments = [];
   if (type === 'input')   base.saveAs      = '';
-  if (type === 'timer')   { base.timerSeconds = 30; base.timerMsg = 'Tempo esgotado. Encerrando conversa...'; base.timerOnExpire = null; }
   nodes.push(base);
   selected = id;
   render(); scheduleAutoSave();
@@ -1410,14 +1677,6 @@ async function runNode(id) {
 
   clearChatTimer(); // always clear previous timer when entering a new node
 
-  // ── timer ──
-  if (n.type === 'timer') {
-    const secs = n.timerSeconds || 30;
-    const msg  = n.timerMsg || 'Tempo esgotado. Encerrando conversa...';
-    startChatTimer(secs, msg, n.timerOnExpire, n.next);
-    return;
-  }
-
   // ── setvar ──
   if (n.type === 'setvar') {
     (n.assignments || []).forEach(a => {
@@ -1435,6 +1694,9 @@ async function runNode(id) {
     document.getElementById('chat-input').disabled = false;
     document.getElementById('chat-submit').disabled = false;
     document.getElementById('chat-input').focus();
+    if (n.timeoutSeconds) {
+      startChatTimer(n.timeoutSeconds, n.timeoutMsg || 'Tempo esgotado. Encerrando conversa...', null);
+    }
     return;
   }
 
@@ -1443,6 +1705,9 @@ async function runNode(id) {
     chatNodeId = n.id;
     addChatMsg('bot', interpolate(n.content));
     showChoiceButtons(n);
+    if (n.timeoutSeconds) {
+      startChatTimer(n.timeoutSeconds, n.timeoutMsg || 'Tempo esgotado. Encerrando conversa...', null);
+    }
     return;
   }
 
@@ -1490,15 +1755,56 @@ function showChoiceButtons(n) {
 
 function sendUserInput() {
   if (!awaitingInput) return;
+  const val = document.getElementById('chat-input').value.trim();
+  if (!val) return;
+
+  const cur = nodes.find(x => x.id === chatNodeId);
+
+  // ── Run validations ──
+  if (cur?.validations?.length) {
+    for (const v of cur.validations) {
+      let ok = true;
+      if (v.type === 'minLen')       ok = val.length >= (v.min || 1);
+      else if (v.type === 'maxLen')  ok = val.length <= (v.max || 100);
+      else if (v.type === 'onlyLetters') ok = /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$/.test(val);
+      else if (v.type === 'onlyNumbers') ok = /^\d+$/.test(val);
+      else if (v.type === 'onlyAlpha')   ok = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9\s]+$/.test(val);
+      else if (v.type === 'blockedChars') {
+        const blocked = v.blocked || '';
+        if (blocked) {
+          const found = [...val].find(ch => blocked.includes(ch));
+          ok = !found;
+        }
+      }
+      else if (v.type === 'regex') {
+        try { ok = new RegExp(v.pattern || '').test(val); } catch { ok = false; }
+      }
+      if (!ok) {
+        // show error msg but keep input active
+        const errMsg = v.errorMsg || 'Entrada inválida. Tente novamente.';
+        addChatMsg('bot', '⚠ ' + errMsg);
+        // clear input but stay on same node
+        document.getElementById('chat-input').value = '';
+        // if onFail route, go there; otherwise stay (re-prompt)
+        if (v.onFail) {
+          clearChatTimer();
+          document.getElementById('chat-input').disabled = true;
+          document.getElementById('chat-submit').disabled = true;
+          awaitingInput = false;
+          setTimeout(() => runNode(v.onFail), 400);
+        }
+        return;
+      }
+    }
+  }
+
   clearChatTimer();
-  const val = document.getElementById('chat-input').value.trim(); if (!val) return;
   addChatMsg('user', val);
   document.getElementById('chat-input').value = '';
   document.getElementById('chat-input').disabled = true;
   document.getElementById('chat-submit').disabled = true;
   awaitingInput = false;
   // save to variable
-  const cur = nodes.find(x => x.id === chatNodeId);
   if (cur?.saveAs) chatVars[cur.saveAs] = val;
   chatVars.lastInput = val;
   if (cur?.next) setTimeout(() => runNode(cur.next), 300);
@@ -1522,7 +1828,7 @@ function clearChatTimer() {
   document.querySelectorAll('.chat-timer-wrap').forEach(e => e.remove());
 }
 
-function startChatTimer(secs, expireMsg, expireNodeId, passNode) {
+function startChatTimer(secs, expireMsg) {
   const container = document.getElementById('chat-messages');
 
   // Create timer bar UI
@@ -1563,9 +1869,7 @@ function startChatTimer(secs, expireMsg, expireNodeId, passNode) {
     document.querySelectorAll('.chat-choice-btn').forEach(b => b.disabled = true);
     // show expire message
     addChatMsg('bot', expireMsg);
-    // go to expireNode or passNode or end
-    const dest = expireNodeId || passNode || null;
-    if (dest) setTimeout(() => runNode(dest), 500);
+    // always end conversation on timeout
   }, secs * 1000);
 }
 
