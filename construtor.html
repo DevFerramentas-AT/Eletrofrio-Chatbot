@@ -901,6 +901,9 @@ html, body {
           <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
             <path d="M0,0L0,6L8,3z" fill="#3ecf8e"/>
           </marker>
+          <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+            <path d="M0,0L0,6L8,3z" fill="#e05252"/>
+          </marker>
         </defs>
       </svg>
     </div>
@@ -1398,6 +1401,7 @@ function drawArrows() {
     const markerId = color === '#e06aaa' || color === '#5a3a4a' ? 'arrow-pink'
       : color === '#a78bfa' || color === '#4a3a6a' ? 'arrow-violet'
       : color === '#3ecf8e' || color === '#1a4a3a' ? 'arrow-green'
+      : color === '#e05252' || color === '#4a1a1a' ? 'arrow-red'
       : (isSelected ? 'arrow-accent' : 'arrow');
     path.setAttribute('marker-end', `url(#${markerId})`);
     svg.appendChild(path);
@@ -1438,12 +1442,26 @@ function drawArrows() {
     if (!aEl) return;
     const isSel = selected === n.id;
 
-    // normal next
-    if (n.next && n.type !== 'choice') {
+    // normal next (skip for query — it uses success/error routes)
+    if (n.next && n.type !== 'choice' && n.type !== 'query') {
       const bNode = nodes.find(x => x.id === n.next);
       const bEl   = document.getElementById('node-' + n.next);
       if (bNode && bEl) {
         drawConnector(n, bNode, aEl, bEl, isSel ? '#7c6ee6' : '#3a3a52', null, isSel);
+      }
+    }
+
+    // query success/error routes
+    if (n.type === 'query') {
+      if (n.apiSuccessNext) {
+        const bNode = nodes.find(x => x.id === n.apiSuccessNext);
+        const bEl   = document.getElementById('node-' + n.apiSuccessNext);
+        if (bNode && bEl) drawConnector(n, bNode, aEl, bEl, isSel ? '#3ecf8e' : '#1a4a3a', '✅ Sucesso', isSel);
+      }
+      if (n.apiErrorNext) {
+        const bNode = nodes.find(x => x.id === n.apiErrorNext);
+        const bEl   = document.getElementById('node-' + n.apiErrorNext);
+        if (bNode && bEl) drawConnector(n, bNode, aEl, bEl, isSel ? '#e05252' : '#4a1a1a', '❌ Erro', isSel);
       }
     }
 
@@ -1831,9 +1849,26 @@ function renderInspector(id) {
         <label>Mensagem de carregamento</label>
         <input id="f-api-loading" type="text" placeholder="Consultando…" value="${(n.apiLoadingMsg||'').replace(/"/g,'&quot;')}">
       </div>
+      <div class="inspector-divider"></div>
       <div class="field">
-        <label>Mensagem em caso de erro</label>
-        <input id="f-api-error" type="text" placeholder="Não foi possível consultar. Tente novamente." value="${(n.apiErrorMsg||'').replace(/"/g,'&quot;')}">
+        <label>✅ Próximo bloco em caso de sucesso</label>
+        <select id="f-api-success-next">
+          <option value="">— nenhum —</option>
+          ${nodes.filter(x => x.id !== id).map(x =>
+            `<option value="${x.id}"${x.id === n.apiSuccessNext ? ' selected' : ''}>${NODE_TYPES[x.type].label}${x.label ? ' ('+x.label+')' : ' ('+x.id.slice(-4)+')'}</option>`
+          ).join('')}
+        </select>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">Bloco executado quando a API responde com sucesso.</div>
+      </div>
+      <div class="field">
+        <label>❌ Próximo bloco em caso de erro</label>
+        <select id="f-api-error-next">
+          <option value="">— nenhum —</option>
+          ${nodes.filter(x => x.id !== id).map(x =>
+            `<option value="${x.id}"${x.id === n.apiErrorNext ? ' selected' : ''}>${NODE_TYPES[x.type].label}${x.label ? ' ('+x.label+')' : ' ('+x.id.slice(-4)+')'}</option>`
+          ).join('')}
+        </select>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">Bloco executado quando a API falha ou retorna erro.</div>
       </div>`;
   }
 
@@ -1916,13 +1951,13 @@ function renderInspector(id) {
         <button class="btn-add-validation" onclick="addValidation('${id}')">+ Adicionar validação</button>
       </div>`;
   }
-  const nextField = n.type !== 'choice' ? `
+  const nextField = (n.type !== 'choice' && n.type !== 'query') ? `
     <div class="field">
       <label>Próximo bloco</label>
       <select id="f-next">${nextOptions}</select>
     </div>` : '';
 
-  const contentField = (n.type !== 'setvar' && n.type !== 'orientation') ? `
+  const contentField = (n.type !== 'setvar' && n.type !== 'orientation' && n.type !== 'query') ? `
     <div class="field">
       <label>Conteúdo</label>
       <textarea id="f-content">${n.content}</textarea>
@@ -2109,8 +2144,9 @@ function saveNode(id) {
   if (document.getElementById('f-api-url'))     n.apiUrl        = document.getElementById('f-api-url').value.trim();
   if (document.getElementById('f-api-method'))  n.apiMethod     = document.getElementById('f-api-method').value;
   if (document.getElementById('f-api-auth'))    n.apiAuth       = document.getElementById('f-api-auth').value.trim();
-  if (document.getElementById('f-api-loading')) n.apiLoadingMsg = document.getElementById('f-api-loading').value.trim();
-  if (document.getElementById('f-api-error'))   n.apiErrorMsg   = document.getElementById('f-api-error').value.trim();
+  if (document.getElementById('f-api-loading'))      n.apiLoadingMsg  = document.getElementById('f-api-loading').value.trim();
+  if (document.getElementById('f-api-success-next')) n.apiSuccessNext = document.getElementById('f-api-success-next').value || null;
+  if (document.getElementById('f-api-error-next'))   n.apiErrorNext   = document.getElementById('f-api-error-next').value || null;
   if (document.getElementById('f-hub-target'))  n.targetFlow    = document.getElementById('f-hub-target').value || null;
   if (document.getElementById('f-hub-msg'))     n.transitionMsg = document.getElementById('f-hub-msg').value.trim() || null;
   // validations are updated live via updateValidation(); nothing extra needed here
@@ -2847,15 +2883,13 @@ async function runNode(id) {
       });
 
       loadingEl.remove();
-      // show a confirmation message with mapped vars summary
-      const summary = (n.apiMappings || []).filter(m => m.variable && chatVars[m.variable] !== undefined)
-        .map(m => `{{${m.variable}}} = ${chatVars[m.variable]}`).join(' · ');
-      if (summary) addChatMsg('bot', '✓ ' + summary);
+      const successNext = n.apiSuccessNext || n.next;
+      if (successNext) setTimeout(() => runNode(successNext), 400);
     } catch (err) {
       loadingEl.remove();
-      addChatMsg('bot', n.apiErrorMsg || 'Erro ao consultar a API. Tente novamente.');
+      const errorNext = n.apiErrorNext || n.next;
+      if (errorNext) setTimeout(() => runNode(errorNext), 400);
     }
-    if (n.next) setTimeout(() => runNode(n.next), 400);
     return;
   }
 
