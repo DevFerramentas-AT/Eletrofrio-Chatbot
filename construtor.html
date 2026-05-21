@@ -114,6 +114,8 @@ html, body {
   overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+  grid-column: 1;
+  grid-row: 2;
 }
 .sidebar-section { padding: 12px 10px 4px; }
 .sidebar-label {
@@ -148,6 +150,8 @@ html, body {
   background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
   background-size: 28px 28px;
   cursor: default;
+  grid-column: 2;
+  grid-row: 2;
 }
 #canvas {
   position: absolute; top: 0; left: 0;
@@ -216,15 +220,25 @@ html, body {
 .chat-timer-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #e84b6e, #f09050); transition: width 1s linear; }
 .chat-timer-label { font-size: 10px; color: var(--text3); margin-top: 3px; text-align: right; }
 
+/* ── Right panel wrapper (inspector + preview share col 3) ── */
+#right-panel-wrap {
+  position: relative;
+  grid-column: 3;
+  grid-row: 2;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  min-height: 0;
+}
+
 /* ── Inspector ── */
 #inspector {
-  background: var(--bg2); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
-  transition: width .22s cubic-bezier(.4,0,.2,1), min-width .22s cubic-bezier(.4,0,.2,1);
-  width: 340px; min-width: 340px;
+  position: absolute; inset: 0;
+  background: var(--bg2);
+  display: flex; flex-direction: column;
+  overflow: hidden;
 }
 #inspector.collapsed {
-  width: 36px; min-width: 36px;
+  overflow: hidden;
 }
 #inspector-header {
   padding: 0 10px; height: 44px; border-bottom: 1px solid var(--border);
@@ -350,8 +364,10 @@ html, body {
 
 /* ── Chat Preview ── */
 #preview-panel {
+  position: absolute; inset: 0;
   display: none; flex-direction: column;
-  background: var(--bg2); border-left: 1px solid var(--border);
+  background: var(--bg2);
+  overflow: hidden;
 }
 #preview-panel.show { display: flex; }
 #preview-header {
@@ -360,10 +376,24 @@ html, body {
 }
 #preview-header span { font-size: 12px; font-weight: 500; color: var(--text2); }
 #chat-messages {
-  flex: 1; overflow-y: auto; padding: 14px 12px;
+  flex: 1; overflow-y: scroll; padding: 14px 12px;
   display: flex; flex-direction: column; gap: 8px;
-  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin; scrollbar-color: var(--border-hi) var(--bg3);
   min-height: 0;
+}
+#chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+#chat-messages::-webkit-scrollbar-track {
+  background: var(--bg3);
+  border-radius: 3px;
+}
+#chat-messages::-webkit-scrollbar-thumb {
+  background: var(--border-hi);
+  border-radius: 3px;
+}
+#chat-messages::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
 }
 .chat-msg {
   max-width: 88%; padding: 8px 12px; border-radius: 12px;
@@ -385,6 +415,7 @@ html, body {
 #chat-input-area {
   padding: 10px; border-top: 1px solid var(--border);
   display: flex; gap: 7px; flex-shrink: 0;
+  background: var(--bg2);
 }
 #chat-input {
   flex: 1; background: var(--bg3); border: 1px solid var(--border);
@@ -764,10 +795,12 @@ html, body {
 
 /* Chat orientation display */
 .chat-orientation {
-  align-self: flex-start; max-width: 88%;
+  align-self: flex-start; max-width: 88%; width: 88%;
   background: var(--bg3); border-radius: 12px; border-bottom-left-radius: 3px;
-  overflow: hidden; border: 1px solid var(--border);
+  border: 1px solid var(--border); overflow: hidden;
+  flex-shrink: 0;
 }
+.chat-orientation-slide { display: block; width: 100%; }
 .chat-orientation-img { width: 100%; max-height: 200px; object-fit: cover; display: block; }
 .chat-orientation-img-placeholder {
   width: 100%; height: 100px; display: flex; align-items: center; justify-content: center;
@@ -789,6 +822,15 @@ html, body {
 .chat-orientation-btn:hover { background: rgba(45,212,191,0.2); }
 .chat-orientation-btn:disabled { opacity: .35; cursor: default; }
 .chat-orientation-counter { font-size: 11px; color: var(--text3); }
+.chat-orientation-continue {
+  display: block; width: calc(100% - 16px); margin: 0 8px 8px;
+  padding: 7px 14px; border-radius: 20px;
+  border: 1px solid var(--teal-border); background: var(--teal-bg);
+  color: var(--teal); font-size: 12px; cursor: pointer; font-family: inherit;
+  transition: all .15s; text-align: center;
+}
+.chat-orientation-continue:hover { background: rgba(45,212,191,0.2); }
+.chat-orientation-continue:disabled { opacity: .45; cursor: default; }
 
 /* ── Hub block ── */
 .node-hub-body {
@@ -915,6 +957,8 @@ html, body {
     </div>
   </div>
 
+  <!-- Inspector + Preview wrapper (share column 3) -->
+  <div id="right-panel-wrap">
   <!-- Inspector -->
   <div id="inspector">
     <div id="inspector-header">
@@ -941,6 +985,8 @@ html, body {
       <button id="chat-submit" onclick="sendUserInput()" disabled>Enviar</button>
     </div>
   </div>
+
+  </div><!-- /right-panel-wrap -->
 
 </div>
 
@@ -2944,27 +2990,48 @@ async function runNode(id) {
     }
     const oriEl = document.createElement('div');
     oriEl.className = 'chat-orientation';
+    oriEl.innerHTML = `
+      <div class="chat-orientation-slide"></div>
+      <div class="chat-orientation-caption" style="display:none"></div>
+      <div class="chat-orientation-nav" style="display:none">
+        <button class="chat-orientation-btn" id="oprev">◀ Anterior</button>
+        <span class="chat-orientation-counter">1 / ${imgs.length}</span>
+        <button class="chat-orientation-btn" id="onext">Próximo ▶</button>
+      </div>
+      <button class="chat-orientation-continue">Continuar ✓</button>
+    `;
+    const slideEl   = oriEl.querySelector('.chat-orientation-slide');
+    const captionEl = oriEl.querySelector('.chat-orientation-caption');
+    const navEl     = oriEl.querySelector('.chat-orientation-nav');
+    const counterEl = oriEl.querySelector('.chat-orientation-counter');
+    const prevBtn   = oriEl.querySelector('#oprev');
+    const nextBtn   = oriEl.querySelector('#onext');
+    const contBtn   = oriEl.querySelector('.chat-orientation-continue');
+
     let curIdx = 0;
-    const render = () => {
+    const renderSlide = () => {
       const img = imgs[curIdx];
-      oriEl.innerHTML = `
-        ${img.url
-          ? `<img class="chat-orientation-img" src="${img.url}" alt="${img.caption||''}" onerror="this.outerHTML='<div class=\\'chat-orientation-img-placeholder\\'>Imagem não disponível</div>'">`
-          : `<div class="chat-orientation-img-placeholder">🖼 Sem imagem</div>`}
-        ${img.caption ? `<div class="chat-orientation-caption">${img.caption}</div>` : ''}
-        <div class="chat-orientation-nav">
-          <button class="chat-orientation-btn" id="ori-prev-btn" ${curIdx===0?'disabled':''}>◀ Anterior</button>
-          <span class="chat-orientation-counter">${curIdx+1} / ${imgs.length}</span>
-          <button class="chat-orientation-btn" id="ori-next-btn" ${curIdx===imgs.length-1?'disabled':''}>Próximo ▶</button>
-        </div>`;
-      oriEl.querySelector('#ori-prev-btn').onclick = () => { if(curIdx>0){curIdx--;render();} };
-      oriEl.querySelector('#ori-next-btn').onclick = () => { if(curIdx<imgs.length-1){curIdx++;render();} };
+      slideEl.innerHTML = img.url
+        ? `<img class="chat-orientation-img" src="${img.url}" alt="${img.caption||''}">`
+        : `<div class="chat-orientation-img-placeholder">🖼 Sem imagem</div>`;
+      captionEl.textContent = img.caption || '';
+      captionEl.style.display = img.caption ? 'block' : 'none';
+      counterEl.textContent = `${curIdx+1} / ${imgs.length}`;
+      prevBtn.disabled = curIdx === 0;
+      nextBtn.disabled = curIdx === imgs.length - 1;
+      navEl.style.display = imgs.length > 1 ? 'flex' : 'none';
     };
-    render();
+    prevBtn.addEventListener('click', () => { if (curIdx > 0) { curIdx--; renderSlide(); } });
+    nextBtn.addEventListener('click', () => { if (curIdx < imgs.length - 1) { curIdx++; renderSlide(); } });
+    contBtn.addEventListener('click', () => {
+      contBtn.disabled = true;
+      contBtn.textContent = '✓ Visto';
+      if (n.next) setTimeout(() => runNode(n.next), 300);
+    });
+    renderSlide();
     const container = document.getElementById('chat-messages');
     container.appendChild(oriEl);
     container.scrollTop = container.scrollHeight;
-    if (n.next) setTimeout(() => runNode(n.next), 400);
     return;
   }
 
