@@ -434,13 +434,38 @@ html, body {
 
 /* ── Vars panel ── */
 #vars-panel {
-  border-top: 1px solid var(--border); flex-shrink: 0;
-  max-height: 120px; overflow-y: auto;
-  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px 12px;
   scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  min-height: 0;
 }
-.vars-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: 6px; }
-#vars-list { font-size: 11px; color: var(--text3); line-height: 1.9; }
+.vars-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: 8px; }
+#vars-list { display: flex; flex-direction: column; gap: 4px; }
+.var-row {
+  display: flex; align-items: center; gap: 5px;
+}
+.var-row-prefix {
+  font-size: 10px; color: var(--text3); flex-shrink: 0;
+  font-family: monospace;
+}
+.var-name-input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 11.5px;
+  padding: 4px 7px; outline: none; font-family: monospace;
+  transition: border-color .15s; min-width: 0;
+}
+.var-name-input:focus { border-color: var(--accent); }
+.var-rename-btn {
+  flex-shrink: 0; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent;
+  border-radius: var(--radius-sm); color: var(--text3);
+  cursor: pointer; font-size: 11px; transition: all .12s; line-height: 1;
+}
+.var-rename-btn:hover { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-hi); }
+.var-empty { font-size: 11px; color: var(--text3); font-style: italic; padding: 4px 2px; }
 
 /* ── Zoom controls ── */
 #zoom-controls { position: absolute; bottom: 14px; left: 14px; display: flex; gap: 4px; }
@@ -746,6 +771,47 @@ html, body {
 }
 .flow-entry-del:hover { color: var(--red); background: var(--red-bg); }
 
+/* ── Env toggle ── */
+#env-toggle {
+  display: flex; border-radius: 20px; overflow: hidden;
+  border: 1px solid var(--border); flex-shrink: 0;
+}
+.env-btn {
+  padding: 3px 10px; font-size: 10px; font-weight: 700;
+  letter-spacing: .06em; border: none; background: transparent;
+  color: var(--text3); cursor: pointer; transition: all .15s; line-height: 1.6;
+}
+.env-btn.env-active.dev  { background: rgba(232,184,75,0.2);  color: #e8b84b; }
+.env-btn.env-active.prod { background: rgba(62,207,142,0.2);  color: #3ecf8e; }
+.env-btn:not(.env-active):hover { background: var(--bg3); color: var(--text2); }
+
+/* ── Generic modals ── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.6); z-index: 1000;
+  align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal-box {
+  background: var(--bg2); border: 1px solid var(--border-hi);
+  border-radius: 14px; max-height: 80vh;
+  display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+.modal-head {
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.modal-head h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+.modal-body { flex:1; overflow-y: auto; padding: 12px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.modal-foot { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.env-label {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  padding: 2px 7px; border-radius: 20px;
+}
+.env-label.dev  { background: rgba(232,184,75,0.15);  color: #e8b84b; border: 1px solid rgba(232,184,75,0.3); }
+.env-label.prod { background: rgba(62,207,142,0.15); color: #3ecf8e; border: 1px solid rgba(62,207,142,0.3); }
+
 /* ── Orientation block ── */
 .node-orientation-gallery {
   padding: 6px 10px 8px;
@@ -883,16 +949,22 @@ html, body {
   <!-- Topbar -->
   <div id="topbar">
     <div class="logo">Eletrofrio<span>Chatbot</span></div>
-    <input id="flow-name" value="Meu Chatbot" oninput="scheduleAutoSave()" />
-    <div id="save-status" title="Status de salvamento">● salvo</div>
+    <input id="flow-name" value="" placeholder="Nome do fluxo…" oninput="scheduleAutoSave()" />
+    <div id="save-status" title="Status de salvamento"></div>
+    <div id="env-toggle" title="Ambiente ativo — clique para alternar">
+      <button id="env-btn-dev" class="env-btn env-active dev" onclick="switchEnv('dev')">DEV</button>
+      <button id="env-btn-prod" class="env-btn" onclick="switchEnv('prod')">PROD</button>
+    </div>
     <div class="spacer"></div>
-    <button class="top-btn" onclick="openFlowsModal()">📁 Fluxos</button>
+    <button class="top-btn" onclick="openNewModal()">＋ Novo</button>
+    <button class="top-btn" onclick="openLoadModal()">📂 Carregar</button>
     <button class="top-btn" onclick="exportJSON()">↓ Exportar</button>
     <label class="top-btn" style="cursor:pointer">↑ Importar
       <input type="file" accept=".json" style="display:none" onchange="importJSON(this)">
     </label>
     <button class="top-btn" onclick="autoLayout()">⊞ Organizar</button>
     <button class="top-btn" onclick="clearAll()">Limpar</button>
+    <button class="top-btn" id="btn-publish" onclick="publishToProducao()" style="background:rgba(62,207,142,0.12);border-color:rgba(62,207,142,0.35);color:#3ecf8e">🚀 Publicar</button>
     <button class="top-btn primary" id="btn-test" onclick="togglePreview()">▶ Testar</button>
   </div>
 
@@ -900,21 +972,16 @@ html, body {
   <div id="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Blocos</div>
-      <div class="block-item" draggable="true" data-type="setvar"><span class="block-icon">📦</span>Atribuir variável</div>
-      <div class="block-item" draggable="true" data-type="condition"><span class="block-icon">⚡</span>Condição</div>
-      <div class="block-item" draggable="true" data-type="query"><span class="block-icon">🔌</span>Consulta API</div>
-      <div class="block-item" draggable="true" data-type="input"><span class="block-icon">⌨️</span>Entrada livre</div>
-      <div class="block-item" draggable="true" data-type="end"><span class="block-icon">🏁</span>Fim</div>
-      <div class="block-item" draggable="true" data-type="hub"><span class="block-icon">🔗</span>Hub</div>
-      <div class="block-item" draggable="true" data-type="message"><span class="block-icon">💬</span>Mensagem</div>
-      <div class="block-item" draggable="true" data-type="choice"><span class="block-icon">🔀</span>Múltipla escolha</div>
-      <div class="block-item" draggable="true" data-type="orientation"><span class="block-icon">🖼️</span>Orientação</div>
-      <div class="block-item" draggable="true" data-type="ai"><span class="block-icon">🤖</span>Resposta IA</div>
-    </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Ações</div>
-      <div class="block-item" onclick="addNode('message')" style="cursor:pointer"><span style="font-size:13px">+</span> Novo bloco</div>
+      <div class="block-item" draggable="true" data-type="setvar" onclick="addNode('setvar')"><span class="block-icon">📦</span>Atribuir variável</div>
+      <div class="block-item" draggable="true" data-type="condition" onclick="addNode('condition')"><span class="block-icon">⚡</span>Condição</div>
+      <div class="block-item" draggable="true" data-type="query" onclick="addNode('query')"><span class="block-icon">🔌</span>Consulta API</div>
+      <div class="block-item" draggable="true" data-type="input" onclick="addNode('input')"><span class="block-icon">⌨️</span>Entrada livre</div>
+      <div class="block-item" draggable="true" data-type="end" onclick="addNode('end')"><span class="block-icon">🏁</span>Fim</div>
+      <div class="block-item" draggable="true" data-type="hub" onclick="addNode('hub')"><span class="block-icon">🔗</span>Hub</div>
+      <div class="block-item" draggable="true" data-type="message" onclick="addNode('message')"><span class="block-icon">💬</span>Mensagem</div>
+      <div class="block-item" draggable="true" data-type="choice" onclick="addNode('choice')"><span class="block-icon">🔀</span>Múltipla escolha</div>
+      <div class="block-item" draggable="true" data-type="orientation" onclick="addNode('orientation')"><span class="block-icon">🖼️</span>Orientação</div>
+      <div class="block-item" draggable="true" data-type="ai" onclick="addNode('ai')"><span class="block-icon">🤖</span>Resposta IA</div>
     </div>
     <div id="vars-panel">
       <div class="vars-title">Variáveis em uso</div>
@@ -1000,23 +1067,44 @@ html, body {
 </div>
 
 <!-- Flows Modal -->
-<div id="flows-modal-bg" onclick="if(event.target===this)closeFlowsModal()">
-  <div id="flows-modal">
-    <div id="flows-modal-head">
-      <h3>💾 Fluxos Salvos</h3>
-      <button class="mini-btn" onclick="closeFlowsModal()">✕ Fechar</button>
+<!-- Modal: Novo Fluxo -->
+<div id="new-modal-bg" class="modal-bg" onclick="if(event.target===this)closeNewModal()">
+  <div class="modal-box" style="width:360px">
+    <div class="modal-head">
+      <h3>＋ Novo Fluxo</h3>
+      <button class="mini-btn" onclick="closeNewModal()">✕</button>
     </div>
-    <div id="flows-modal-body">
-      <div id="flows-list"></div>
+    <div class="modal-body" style="padding:18px">
+      <div class="field">
+        <label>Nome do fluxo</label>
+        <input id="new-flow-name" placeholder="Ex: Atendimento Principal…"
+               onkeydown="if(event.key==='Enter')createNewFlow()">
+      </div>
     </div>
-    <div id="flows-modal-foot">
-      <input id="new-flow-name" placeholder="Nome do novo fluxo…" onkeydown="if(event.key==='Enter')createNewFlow()">
-      <button class="top-btn primary" onclick="createNewFlow()">+ Novo</button>
+    <div class="modal-foot">
+      <button class="top-btn" onclick="closeNewModal()">Cancelar</button>
+      <button class="top-btn primary" onclick="createNewFlow()">Criar</button>
     </div>
   </div>
 </div>
 
-<script>
+<!-- Modal: Carregar Fluxo -->
+<div id="load-modal-bg" class="modal-bg" onclick="if(event.target===this)closeLoadModal()">
+  <div class="modal-box" style="width:500px">
+    <div class="modal-head">
+      <h3 id="load-modal-title">📂 Carregar Fluxo</h3>
+      <button class="mini-btn" onclick="closeLoadModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="flows-list"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 // ═══════════════════════════════════════════════════════════
 // NODE TYPE DEFINITIONS
 // ═══════════════════════════════════════════════════════════
@@ -1283,7 +1371,6 @@ function render() {
   applyTransform();
   drawArrows();
   renderVarsList();
-  if (selected) renderInspector(selected);
 }
 
 function applyTransform() {
@@ -1540,20 +1627,16 @@ function drawArrows() {
   });
 }
 
-function renderVarsList() {
+function collectVars() {
   const vars = new Set();
   nodes.forEach(n => {
-    // collect {{var}} from content
-    [...(n.content || '').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => {
-      if (!m[1].startsWith('ia')) vars.add(m[1]);
-    });
+    [...(n.content || '').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => { if (!m[1].startsWith('ia')) vars.add(m[1]); });
     if (n.type === 'input' && n.saveAs) vars.add(n.saveAs);
     if (n.type === 'setvar' && n.assignments) {
-      n.assignments.forEach(a => { if (a.variable) vars.add(a.variable); });
+      n.assignments.forEach(a => { if (a.variable) vars.add(a.variable); [...(a.value||'').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => vars.add(m[1])); });
     }
     if (n.type === 'query') {
-      (n.apiMappings || []).forEach(m => { if (m.variable) vars.add(m.variable); });
-      // interpolated vars in URL and params
+      (n.apiMappings||[]).forEach(m => { if (m.variable) vars.add(m.variable); });
       [...(n.apiUrl||'').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => vars.add(m[1]));
       (n.apiParams||[]).forEach(p => [...(p.value||'').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => vars.add(m[1])));
     }
@@ -1567,17 +1650,96 @@ function renderVarsList() {
       (n.elseActions||[]).forEach(a => { if(a.variable) vars.add(a.variable); });
     }
     if (n.type === 'choice' && n.choices) {
-      n.choices.forEach(c => [...(c.label || '').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => vars.add(m[1])));
-    }
-    // setvar values
-    if (n.type === 'setvar' && n.assignments) {
-      n.assignments.forEach(a => [...(a.value || '').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => vars.add(m[1])));
+      n.choices.forEach(c => [...(c.label||'').matchAll(/\{\{(\w+)\}\}/g)].forEach(m => vars.add(m[1])));
     }
   });
+  return vars;
+}
+
+// Renomeia uma variável em todos os nós do fluxo
+function renameVarInFlow(oldName, newName) {
+  if (!newName || newName === oldName || !/^\w+$/.test(newName)) return false;
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('\\{\\{' + esc(oldName) + '\\}\\}', 'g');
+  const repl = '{{' + newName + '}}';
+  nodes.forEach(n => {
+    if (n.content) n.content = n.content.replace(re, repl);
+    if (n.type === 'input' && n.saveAs === oldName) n.saveAs = newName;
+    if (n.type === 'setvar' && n.assignments) {
+      n.assignments.forEach(a => {
+        if (a.variable === oldName) a.variable = newName;
+        if (a.value) a.value = a.value.replace(re, repl);
+      });
+    }
+    if (n.type === 'query') {
+      if (n.apiUrl) n.apiUrl = n.apiUrl.replace(re, repl);
+      (n.apiParams||[]).forEach(p => { if (p.value) p.value = p.value.replace(re, repl); });
+      (n.apiMappings||[]).forEach(m => { if (m.variable === oldName) m.variable = newName; });
+    }
+    if (n.type === 'condition') {
+      (n.rules||[]).forEach(r => {
+        if (r.varA === oldName) r.varA = newName;
+        if (r.compareType === 'variable' && r.varB === oldName) r.varB = newName;
+        if (r.valB) r.valB = r.valB.replace(re, repl);
+        (r.actions||[]).forEach(a => {
+          if (a.variable === oldName) a.variable = newName;
+          if (a.value) a.value = a.value.replace(re, repl);
+        });
+      });
+      (n.elseActions||[]).forEach(a => {
+        if (a.variable === oldName) a.variable = newName;
+        if (a.value) a.value = a.value.replace(re, repl);
+      });
+    }
+    if (n.type === 'choice' && n.choices) {
+      n.choices.forEach(c => { if (c.label) c.label = c.label.replace(re, repl); });
+    }
+  });
+  return true;
+}
+
+function renderVarsList() {
+  const vars = [...collectVars()].sort();
   const el = document.getElementById('vars-list');
-  el.innerHTML = vars.size
-    ? [...vars].map(v => `<div>• {{${v}}}</div>`).join('')
-    : '<div style="font-style:italic">Nenhuma variável</div>';
+  if (!vars.length) {
+    el.innerHTML = '<div class="var-empty">Nenhuma variável</div>';
+    return;
+  }
+  el.innerHTML = '';
+  vars.forEach(v => {
+    const row = document.createElement('div');
+    row.className = 'var-row';
+    row.innerHTML = `
+      <span class="var-row-prefix">{{</span>
+      <input class="var-name-input" value="${v}" data-original="${v}" spellcheck="false"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();renameVarFromSidebar(this)}"
+        title="Enter ou clique em ✓ para renomear em todos os blocos">
+      <span class="var-row-prefix">}}</span>
+      <button class="var-rename-btn" onclick="renameVarFromSidebar(this.previousElementSibling.previousElementSibling)" title="Renomear em todos os blocos">✓</button>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function renameVarFromSidebar(input) {
+  const oldName = input.dataset.original;
+  const newName = input.value.trim();
+  if (!newName || newName === oldName) return;
+  if (!/^\w+$/.test(newName)) {
+    input.value = oldName;
+    input.style.borderColor = 'var(--red)';
+    setTimeout(() => input.style.borderColor = '', 1200);
+    return;
+  }
+  const ok = renameVarInFlow(oldName, newName);
+  if (ok) {
+    input.dataset.original = newName;
+    input.style.borderColor = 'var(--green)';
+    setTimeout(() => input.style.borderColor = '', 1000);
+    render(); scheduleAutoSave();
+    // re-renderiza inspector se um nó estiver selecionado
+    if (selected) setTimeout(() => renderInspector(selected), 30);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1659,9 +1821,10 @@ function selectNode(id) {
     btn.title = 'Recolher painel';
   }
   render();
+  renderInspector(id);
 }
 
-function renderInspector(id) {
+async function renderInspector(id) {
   const n = nodes.find(x => x.id === id);
   if (!n) return;
   const t = NODE_TYPES[n.type];
@@ -2046,7 +2209,7 @@ function renderInspector(id) {
   // ── Hub editor ──
   let hubEditor = '';
   if (n.type === 'hub') {
-    const allFlows = lsGetIndex().sort((a,b) => a.name.localeCompare(b.name));
+    const allFlows = (await lsGetIndex()).sort((a,b) => a.name.localeCompare(b.name));
     const flowOptions = allFlows.length
       ? allFlows.map(f =>
           `<option value="${f.name.replace(/"/g,'&quot;')}"${n.targetFlow === f.name ? ' selected' : ''}>${f.name}</option>`
@@ -2177,7 +2340,12 @@ function renderInspector(id) {
 function saveNode(id) {
   const n = nodes.find(x => x.id === id);
   if (!n) return;
-  n.type  = document.getElementById('f-type').value;
+
+  const oldType = n.type;
+  const newType = document.getElementById('f-type').value;
+  const typeChanged = oldType !== newType;
+
+  n.type  = newType;
   n.label = document.getElementById('f-label').value;
   if (document.getElementById('f-content')) n.content = document.getElementById('f-content').value;
   if (document.getElementById('f-next'))    n.next    = document.getElementById('f-next').value || null;
@@ -2195,15 +2363,22 @@ function saveNode(id) {
   if (document.getElementById('f-api-error-next'))   n.apiErrorNext   = document.getElementById('f-api-error-next').value || null;
   if (document.getElementById('f-hub-target'))  n.targetFlow    = document.getElementById('f-hub-target').value || null;
   if (document.getElementById('f-hub-msg'))     n.transitionMsg = document.getElementById('f-hub-msg').value.trim() || null;
+
+  // Se o tipo mudou, inicializa content com o default do novo tipo (se vazio)
+  if (typeChanged) {
+    if (!n.content) n.content = NODE_TYPES[newType].def || '';
+    if (newType === 'choice'      && !n.choices)     n.choices     = [];
+    if (newType === 'setvar'      && !n.assignments)  n.assignments = [];
+    if (newType === 'input'       && !n.saveAs)       n.saveAs      = '';
+    if (newType === 'condition'   && !n.rules)        n.rules       = [];
+    if (newType === 'query'       && !n.apiParams)    n.apiParams   = [];
+    if (newType === 'orientation' && !n.images)       n.images      = [];
+  }
+
   // validations are updated live via updateValidation(); nothing extra needed here
   render(); scheduleAutoSave();
-  // collapse inspector after save
-  const inspector = document.getElementById('inspector');
-  const app = document.getElementById('app');
-  inspector.classList.add('collapsed');
-  app.classList.add('inspector-collapsed');
-  document.getElementById('inspector-toggle').textContent = '▶';
-  selectedNode = null;
+  // Re-renderiza o inspector com os campos atualizados (especialmente se o tipo mudou)
+  setTimeout(() => renderInspector(id), 30);
 }
 
 // ── Choice helpers ──
@@ -2212,11 +2387,13 @@ function addChoice(nodeId) {
   if (!n.choices) n.choices = [];
   n.choices.push({ id: 'c' + Date.now(), label: '', next: null });
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function removeChoice(nodeId, choiceId) {
   const n = nodes.find(x => x.id === nodeId);
   n.choices = n.choices.filter(c => c.id !== choiceId);
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function updateChoice(nodeId, choiceId, field, value) {
   const n = nodes.find(x => x.id === nodeId);
@@ -2230,11 +2407,13 @@ function addAssignment(nodeId) {
   if (!n.assignments) n.assignments = [];
   n.assignments.push({ variable: '', value: '' });
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function removeAssignment(nodeId, idx) {
   const n = nodes.find(x => x.id === nodeId);
   n.assignments.splice(idx, 1);
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function updateAssignment(nodeId, idx, field, value) {
   const n = nodes.find(x => x.id === nodeId);
@@ -2398,11 +2577,13 @@ function addQueryParam(nodeId) {
   if (!n.apiParams) n.apiParams = [];
   n.apiParams.push({ key: '', value: '' });
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function removeQueryParam(nodeId, idx) {
   const n = nodes.find(x => x.id === nodeId);
   n.apiParams.splice(idx, 1);
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function updateQueryParam(nodeId, idx, field, value) {
   const n = nodes.find(x => x.id === nodeId);
@@ -2415,11 +2596,13 @@ function addQueryMapping(nodeId) {
   if (!n.apiMappings) n.apiMappings = [];
   n.apiMappings.push({ jsonKey: '', variable: '' });
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function removeQueryMapping(nodeId, idx) {
   const n = nodes.find(x => x.id === nodeId);
   n.apiMappings.splice(idx, 1);
   render(); scheduleAutoSave();
+  setTimeout(() => renderInspector(nodeId), 30);
 }
 function updateQueryMapping(nodeId, idx, field, value) {
   const n = nodes.find(x => x.id === nodeId);
@@ -2578,46 +2761,142 @@ function ctxDisconnect() { disconnectNode(ctxTarget); }
 function ctxDelete()     { deleteNode(ctxTarget); }
 
 // ═══════════════════════════════════════════════════════════
-// AUTO LAYOUT
+// AUTO LAYOUT  — hierarchical top-down with real node sizes
 // ═══════════════════════════════════════════════════════════
 function autoLayout() {
-  const startNode = nodes.find(n => !nodes.some(x =>
-    x.next === n.id || (x.choices && x.choices.some(c => c.next === n.id))
-  ));
-  if (!startNode) return;
+  if (!nodes.length) return;
 
-  const visited = new Set();
-  const cols = {};    // col index → max width at that col
-  const positions = {};
+  const PAD_X = 60;   // horizontal gap between nodes
+  const PAD_Y = 80;   // vertical gap between levels
+  const NODE_W = 220; // fallback width if DOM not ready
+  const MARGIN = 60;  // canvas margin
 
-  function place(id, col, row) {
-    if (!id || visited.has(id)) return row;
-    visited.add(id);
-    if (!cols[col]) cols[col] = 0;
-    positions[id] = { col, row };
-    const n = nodes.find(x => x.id === id);
-    if (!n) return row + 1;
-    let nextRow = row + 1;
-    if (n.type === 'choice' && n.choices) {
-      n.choices.forEach((c, i) => { nextRow = Math.max(nextRow, place(c.next, col + 1 + i, row)); });
-    } else if (n.next) {
-      nextRow = place(n.next, col, nextRow);
-    }
-    return nextRow;
+  // ── get real rendered height of a node (or estimate) ──
+  function nodeH(id) {
+    const el = document.getElementById('node-' + id);
+    return el ? el.offsetHeight : 120;
   }
-  place(startNode.id, 0, 0);
+  function nodeW(id) {
+    const el = document.getElementById('node-' + id);
+    return el ? el.offsetWidth : NODE_W;
+  }
 
-  // assign x per column, y per row
-  const COL_W = 260, ROW_H = 200;
-  nodes.forEach(n => {
-    const p = positions[n.id];
-    if (p) { n.x = 60 + p.col * COL_W; n.y = 60 + p.row * ROW_H; }
+  // ── collect all children ids of a node ──
+  function childIds(n) {
+    if (!n) return [];
+    const ids = [];
+    if (n.type === 'choice' && n.choices) n.choices.forEach(c => { if (c.next) ids.push(c.next); });
+    else if (n.type === 'condition') {
+      (n.rules||[]).forEach(r => { if (r.next) ids.push(r.next); });
+      if (n.elseNext) ids.push(n.elseNext);
+    }
+    else if (n.type === 'query') {
+      if (n.apiSuccessNext) ids.push(n.apiSuccessNext);
+      if (n.apiErrorNext)   ids.push(n.apiErrorNext);
+    }
+    else { if (n.next) ids.push(n.next); }
+    return ids;
+  }
+
+  // ── find root nodes (no incoming edges) ──
+  const allChildIds = new Set();
+  nodes.forEach(n => childIds(n).forEach(id => allChildIds.add(id)));
+  let roots = nodes.filter(n => !allChildIds.has(n.id));
+  if (!roots.length) roots = [nodes[0]]; // fallback: cycle
+
+  // ── assign depth (level) via BFS ──
+  const depth = {};
+  const queue = roots.map(r => ({ id: r.id, d: 0 }));
+  const visited = new Set();
+  while (queue.length) {
+    const { id, d } = queue.shift();
+    if (visited.has(id)) continue;
+    visited.add(id);
+    depth[id] = Math.max(depth[id] ?? 0, d);
+    const n = nodes.find(x => x.id === id);
+    childIds(n).forEach(cid => queue.push({ id: cid, d: d + 1 }));
+  }
+  // orphans get depth 0
+  nodes.forEach(n => { if (depth[n.id] === undefined) depth[n.id] = 0; });
+
+  // ── group nodes by depth ──
+  const maxDepth = Math.max(...Object.values(depth));
+  const levels = Array.from({ length: maxDepth + 1 }, () => []);
+  nodes.forEach(n => levels[depth[n.id]].push(n.id));
+
+  // ── compute Y for each level (based on tallest node in previous level) ──
+  const levelY = [MARGIN];
+  for (let d = 1; d <= maxDepth; d++) {
+    const prevLevel = levels[d - 1];
+    const maxH = Math.max(...prevLevel.map(id => nodeH(id)), 80);
+    levelY[d] = levelY[d - 1] + maxH + PAD_Y;
+  }
+
+  // ── compute subtree width for x-placement ──
+  const subW = {};
+  function subtreeWidth(id, seenSet = new Set()) {
+    if (subW[id] !== undefined) return subW[id];
+    if (seenSet.has(id)) return nodeW(id);
+    seenSet.add(id);
+    const n = nodes.find(x => x.id === id);
+    const children = childIds(n).filter(cid => depth[cid] > depth[id]);
+    if (!children.length) {
+      subW[id] = nodeW(id);
+      return subW[id];
+    }
+    const total = children.reduce((acc, cid, i) => {
+      return acc + subtreeWidth(cid, new Set(seenSet)) + (i < children.length - 1 ? PAD_X : 0);
+    }, 0);
+    subW[id] = Math.max(nodeW(id), total);
+    return subW[id];
+  }
+  nodes.forEach(n => subtreeWidth(n.id));
+
+  // ── assign X recursively, centering parent over children ──
+  const posX = {};
+  function assignX(id, left, seenSet = new Set()) {
+    if (seenSet.has(id)) return;
+    seenSet.add(id);
+    const n = nodes.find(x => x.id === id);
+    const children = childIds(n).filter(cid => depth[cid] > depth[id]);
+    if (!children.length) {
+      posX[id] = posX[id] ?? left;
+      return;
+    }
+    let cursor = left;
+    children.forEach((cid, i) => {
+      assignX(cid, cursor, new Set(seenSet));
+      cursor += subtreeWidth(cid, new Set()) + (i < children.length - 1 ? PAD_X : 0);
+    });
+    // center parent over its children span
+    const firstChildX = posX[children[0]] ?? left;
+    const lastChild   = children[children.length - 1];
+    const lastChildX  = (posX[lastChild] ?? left) + nodeW(lastChild);
+    const centerX     = (firstChildX + lastChildX) / 2 - nodeW(id) / 2;
+    posX[id] = posX[id] ?? Math.max(left, centerX);
+  }
+
+  // place roots side by side
+  let rootCursor = MARGIN;
+  roots.forEach(r => {
+    assignX(r.id, rootCursor);
+    rootCursor += subtreeWidth(r.id) + PAD_X * 2;
   });
-  // orphans to far right
-  let oy = 60;
+
+  // ── apply positions ──
   nodes.forEach(n => {
-    if (!visited.has(n.id)) { n.x = 60 + Object.keys(cols).length * COL_W; n.y = oy; oy += ROW_H; }
+    n.x = posX[n.id] ?? MARGIN;
+    n.y = levelY[depth[n.id]];
   });
+
+  // ── orphans (not visited): stack at bottom-right ──
+  let ox = MARGIN, oy = (levelY[maxDepth] ?? MARGIN) + 200;
+  nodes.forEach(n => {
+    if (posX[n.id] === undefined) { n.x = ox; n.y = oy; ox += nodeW(n.id) + PAD_X; }
+  });
+
+  // re-center view
+  panX = 0; panY = 0;
   render();
 }
 
@@ -2631,161 +2910,305 @@ function exportJSON() {
   a.download = (document.getElementById('flow-name').value || 'flow') + '.json';
   a.click();
 }
-function importJSON(input) {
-  const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const data = JSON.parse(e.target.result);
-      nodes = data.nodes || [];
-      if (data.name) document.getElementById('flow-name').value = data.name;
-      selected = null; render(); autoSaveNow();
-    } catch(err) { alert('JSON inválido: ' + err.message); }
-  };
-  reader.readAsText(file);
-}
 function clearAll() {
   if (!confirm('Apagar todos os blocos?')) return;
   nodes = []; selected = null; render(); autoSaveNow();
 }
 
 // ═══════════════════════════════════════════════════════════
-// LOCAL STORAGE — MULTI-FLOW PERSISTENCE
+// FIREBASE — MULTI-FLOW PERSISTENCE
 // ═══════════════════════════════════════════════════════════
-const LS_INDEX   = 'flowbot_index';   // list of saved flow IDs + names
-const LS_CURRENT = 'flowbot_current'; // active flow ID
+const firebaseConfig = {
+  apiKey: "AIzaSyCnnu5hLaqa46wap7ez-Jde9Nkja9sKUGk",
+  authDomain: "chatbot-eletrofro.firebaseapp.com",
+  projectId: "chatbot-eletrofro",
+  storageBucket: "chatbot-eletrofro.firebasestorage.app",
+  messagingSenderId: "551663260984",
+  appId: "1:551663260984:web:2e5ef44de23c73668eddcd"
+};
+
+const _fbApp = initializeApp(firebaseConfig);
+const _db    = getFirestore(_fbApp);
+
+const COL_DEV  = 'Desenvolvimento';
+const COL_PROD = 'Producao';
+
+let currentEnv    = 'dev';   // 'dev' | 'prod'
 let currentFlowId = null;
 let autoSaveTimer = null;
+let _isSaving     = false;
 
-function lsGetIndex() {
-  try { return JSON.parse(localStorage.getItem(LS_INDEX)) || []; }
-  catch { return []; }
+// ── Env switch ───────────────────────────────────────────────
+function currentCol() { return currentEnv === 'prod' ? COL_PROD : COL_DEV; }
+
+function switchEnv(env) {
+  if (currentEnv === env) return;
+  currentEnv = env;
+  // update toggle UI
+  document.getElementById('env-btn-dev').className  = 'env-btn' + (env === 'dev'  ? ' env-active dev'  : '');
+  document.getElementById('env-btn-prod').className = 'env-btn' + (env === 'prod' ? ' env-active prod' : '');
+  // clear canvas — user must explicitly load a flow for the chosen env
+  nodes = []; selected = null; currentFlowId = null;
+  document.getElementById('flow-name').value = '';
+  setSaveStatus('');
+  render();
 }
-function lsSetIndex(arr) { localStorage.setItem(LS_INDEX, JSON.stringify(arr)); }
-function lsGetFlow(id) {
-  try { return JSON.parse(localStorage.getItem('flowbot_flow_' + id)); }
-  catch { return null; }
+
+function nameToId(name) {
+  return (name || 'sem-nome').trim().replace(/\s+/g, ' ');
 }
-function lsSaveFlow(id, name, nodesArr) {
+
+// ── Low-level helpers ────────────────────────────────────────
+async function fbGet(col, id) {
+  try {
+    const snap = await getDoc(doc(_db, col, id));
+    return snap.exists() ? snap.data() : null;
+  } catch(e) { console.error('[Firebase] get', col, id, e); return null; }
+}
+async function fbSet(col, id, data) {
+  await setDoc(doc(_db, col, id), data);
+}
+async function fbDel(col, id) {
+  await deleteDoc(doc(_db, col, id));
+}
+
+// ── Index per collection ─────────────────────────────────────
+async function getIndex(col) {
+  const d = await fbGet(col, '__index__');
+  return d || { list: [], current: null };
+}
+async function saveIndex(col, list, currentId) {
+  await fbSet(col, '__index__', { list, current: currentId, updatedAt: Date.now() });
+}
+
+// ── Flow CRUD ────────────────────────────────────────────────
+async function lsGetFlow(id, col) {
+  return await fbGet(col || currentCol(), id);
+}
+async function lsSaveFlow(id, name, nodesArr, col) {
+  col = col || currentCol();
   const data = { id, name, nodes: nodesArr, savedAt: Date.now() };
-  localStorage.setItem('flowbot_flow_' + id, JSON.stringify(data));
-  // update index
-  const idx = lsGetIndex();
-  const existing = idx.find(f => f.id === id);
-  if (existing) { existing.name = name; existing.savedAt = Date.now(); }
-  else idx.push({ id, name, savedAt: Date.now() });
-  lsSetIndex(idx);
+  await fbSet(col, id, data);
+  const idx = await getIndex(col);
+  const entry = idx.list.find(f => f.id === id);
+  if (entry) { entry.name = name; entry.savedAt = data.savedAt; }
+  else idx.list.push({ id, name, savedAt: data.savedAt });
+  await saveIndex(col, idx.list, id);
 }
-function lsDeleteFlow(id) {
-  localStorage.removeItem('flowbot_flow_' + id);
-  lsSetIndex(lsGetIndex().filter(f => f.id !== id));
+async function lsDeleteFlow(id, col) {
+  col = col || currentCol();
+  await fbDel(col, id);
+  const idx = await getIndex(col);
+  await saveIndex(col, idx.list.filter(f => f.id !== id), idx.current === id ? null : idx.current);
 }
-function generateId() { return 'flow_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+async function lsGetIndex(col) {
+  const idx = await getIndex(col || currentCol());
+  return idx.list || [];
+}
 
+// ── Save status ──────────────────────────────────────────────
 function setSaveStatus(state) {
   const el = document.getElementById('save-status');
-  el.className = 'saved';
+  if (!el) return;
   if (state === 'saving') { el.textContent = '● salvando…'; el.className = 'saving'; }
-  else if (state === 'saved') { el.textContent = '● salvo'; el.className = 'saved'; }
-  else { el.textContent = '● não salvo'; el.className = ''; }
+  else if (state === 'saved') { el.textContent = '● salvo';     el.className = 'saved'; }
+  else                        { el.textContent = '';             el.className = ''; }
 }
 
+// ── AutoSave ─────────────────────────────────────────────────
 function scheduleAutoSave() {
+  if (!currentFlowId) return; // nothing loaded yet
   setSaveStatus('saving');
   clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(autoSaveNow, 800);
+  autoSaveTimer = setTimeout(autoSaveNow, 1000);
 }
 
-function autoSaveNow() {
-  if (!currentFlowId) currentFlowId = generateId();
-  const name = document.getElementById('flow-name').value || 'Sem nome';
-  lsSaveFlow(currentFlowId, name, nodes);
-  localStorage.setItem(LS_CURRENT, currentFlowId);
-  setSaveStatus('saved');
-}
-
-// ── Flows Modal ──
-function openFlowsModal() {
-  renderFlowsList();
-  document.getElementById('flows-modal-bg').classList.add('open');
-}
-function closeFlowsModal() {
-  document.getElementById('flows-modal-bg').classList.remove('open');
-}
-
-function renderFlowsList() {
-  const list = document.getElementById('flows-list');
-  const idx = lsGetIndex().sort((a,b) => b.savedAt - a.savedAt);
-  if (!idx.length) {
-    list.innerHTML = '<div style="text-align:center;padding:30px 20px;color:var(--text3);font-size:13px">Nenhum fluxo salvo ainda.<br>O fluxo atual é salvo automaticamente.</div>';
-    return;
+async function autoSaveNow() {
+  if (_isSaving || !currentFlowId) return;
+  _isSaving = true;
+  setSaveStatus('saving');
+  try {
+    const name = document.getElementById('flow-name').value.trim() || 'Sem nome';
+    const id   = nameToId(name);
+    if (currentFlowId && currentFlowId !== id) {
+      await lsDeleteFlow(currentFlowId);
+    }
+    currentFlowId = id;
+    await lsSaveFlow(id, name, nodes);
+    setSaveStatus('saved');
+  } catch(e) {
+    console.error('[AutoSave]', e);
+    setSaveStatus('');
+  } finally {
+    _isSaving = false;
   }
-  list.innerHTML = '';
-  idx.forEach(f => {
-    const el = document.createElement('div');
-    el.className = 'flow-entry' + (f.id === currentFlowId ? ' active' : '');
-    const date = new Date(f.savedAt).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-    el.innerHTML = `
-      <div class="flow-entry-info">
-        <div class="flow-entry-name">${f.name}</div>
-        <div class="flow-entry-meta">Salvo em ${date}</div>
-      </div>
-      <button class="flow-entry-del" title="Excluir" onclick="deleteFlowEntry('${f.id}',event)">🗑</button>
-    `;
-    el.addEventListener('click', () => loadFlowEntry(f.id));
-    list.appendChild(el);
-  });
 }
 
-function loadFlowEntry(id) {
-  const data = lsGetFlow(id);
+// ── Publish to Producao ──────────────────────────────────────
+async function publishToProducao() {
+  const btn = document.getElementById('btn-publish');
+  if (btn) { btn.textContent = '⏳ Publicando…'; btn.disabled = true; }
+  try {
+    await autoSaveNow();
+    const name = document.getElementById('flow-name').value.trim() || 'Sem nome';
+    const id   = nameToId(name);
+    await fbSet(COL_PROD, id, { id, name, nodes, publishedAt: Date.now() });
+    // update prod index
+    const idx = await getIndex(COL_PROD);
+    const entry = idx.list.find(f => f.id === id);
+    if (entry) { entry.name = name; entry.savedAt = Date.now(); }
+    else idx.list.push({ id, name, savedAt: Date.now() });
+    await saveIndex(COL_PROD, idx.list, id);
+    if (btn) { btn.textContent = '✓ Publicado!'; }
+    setTimeout(() => { if (btn) { btn.textContent = '🚀 Publicar'; btn.disabled = false; } }, 2500);
+  } catch(e) {
+    console.error('[Publish]', e);
+    alert('Erro ao publicar: ' + e.message);
+    if (btn) { btn.textContent = '🚀 Publicar'; btn.disabled = false; }
+  }
+}
+
+// ── New Flow Modal ───────────────────────────────────────────
+function openNewModal() {
+  document.getElementById('new-flow-name').value = '';
+  document.getElementById('new-modal-bg').classList.add('open');
+  setTimeout(() => document.getElementById('new-flow-name').focus(), 80);
+}
+function closeNewModal() {
+  document.getElementById('new-modal-bg').classList.remove('open');
+}
+async function createNewFlow() {
+  const nameInput = document.getElementById('new-flow-name').value.trim();
+  if (!nameInput) { document.getElementById('new-flow-name').focus(); return; }
+  closeNewModal();
+  if (currentFlowId) await autoSaveNow(); // save current first
+  nodes = []; selected = null;
+  const id = nameToId(nameInput);
+  currentFlowId = id;
+  document.getElementById('flow-name').value = nameInput;
+  await lsSaveFlow(id, nameInput, nodes);
+  render(); setSaveStatus('saved');
+}
+
+// ── Load Flow Modal ──────────────────────────────────────────
+function openLoadModal() {
+  renderFlowsList();
+  document.getElementById('load-modal-bg').classList.add('open');
+}
+function closeLoadModal() {
+  document.getElementById('load-modal-bg').classList.remove('open');
+}
+
+// used by old code that still calls openFlowsModal / closeFlowsModal
+function openFlowsModal()  { openLoadModal(); }
+function closeFlowsModal() { closeLoadModal(); }
+
+async function renderFlowsList() {
+  const list  = document.getElementById('flows-list');
+  const col   = currentCol();
+  const label = currentEnv === 'prod' ? 'Produção' : 'Desenvolvimento';
+  document.getElementById('load-modal-title').textContent = `📂 Carregar — ${label}`;
+  list.innerHTML = '<div style="text-align:center;padding:30px 20px;color:var(--text3);font-size:13px">Carregando…</div>';
+  try {
+    // Busca todos os documentos da coleção diretamente (ignora __index__ que pode estar desatualizado)
+    const snap = await getDocs(collection(_db, col));
+    const flows = [];
+    snap.forEach(docSnap => {
+      if (docSnap.id === '__index__') return;
+      const d = docSnap.data();
+      flows.push({ id: docSnap.id, name: d.name || docSnap.id, savedAt: d.savedAt || d.publishedAt || 0 });
+    });
+    flows.sort((a, b) => b.savedAt - a.savedAt);
+    if (!flows.length) {
+      list.innerHTML = `<div style="text-align:center;padding:30px 20px;color:var(--text3);font-size:13px">Nenhum fluxo salvo em <b>${label}</b> ainda.</div>`;
+      return;
+    }
+    list.innerHTML = '';
+    flows.forEach(f => {
+      const el = document.createElement('div');
+      el.className = 'flow-entry' + (f.id === currentFlowId ? ' active' : '');
+      const date = f.savedAt ? new Date(f.savedAt).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      const envCls = currentEnv === 'prod' ? 'prod' : 'dev';
+      const envTxt = currentEnv === 'prod' ? 'PROD' : 'DEV';
+      const safeId = f.id.replace(/'/g, "\'");
+      const delBtn = currentEnv === 'prod' ? '' : `<button class="flow-entry-del" title="Excluir" onclick="deleteFlowEntry('${safeId}',event)">🗑</button>`;
+      el.innerHTML = `
+        <div class="flow-entry-info">
+          <div class="flow-entry-name">${f.name}</div>
+          <div class="flow-entry-meta" style="display:flex;align-items:center;gap:6px;margin-top:3px">
+            <span class="env-label ${envCls}">${envTxt}</span>
+            <span>${date}</span>
+          </div>
+        </div>
+        ${delBtn}
+      `;
+      el.addEventListener('click', () => loadFlowEntry(f.id));
+      list.appendChild(el);
+    });
+  } catch(e) {
+    console.error('[renderFlowsList]', e);
+    list.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">Erro ao carregar fluxos: ${e.message}</div>`;
+  }
+}
+
+async function loadFlowEntry(id) {
+  const data = await lsGetFlow(id);
   if (!data) { alert('Fluxo não encontrado.'); return; }
   nodes = data.nodes || [];
   document.getElementById('flow-name').value = data.name || '';
   currentFlowId = id;
-  localStorage.setItem(LS_CURRENT, id);
   selected = null; render();
   setSaveStatus('saved');
-  closeFlowsModal();
+  closeLoadModal();
 }
 
-function deleteFlowEntry(id, e) {
+async function deleteFlowEntry(id, e) {
   e.stopPropagation();
-  if (!confirm('Excluir este fluxo do armazenamento?')) return;
-  lsDeleteFlow(id);
-  if (id === currentFlowId) { currentFlowId = null; setSaveStatus(''); }
-  renderFlowsList();
-}
-
-function createNewFlow() {
-  autoSaveNow(); // save current first
-  const name = document.getElementById('new-flow-name').value.trim() || 'Novo Fluxo';
-  nodes = []; selected = null;
-  currentFlowId = generateId();
-  document.getElementById('flow-name').value = name;
-  document.getElementById('new-flow-name').value = '';
-  lsSaveFlow(currentFlowId, name, nodes);
-  localStorage.setItem(LS_CURRENT, currentFlowId);
-  render(); setSaveStatus('saved');
-  renderFlowsList();
-}
-
-// ── Init: load last active flow or auto-save default ──
-(function initStorage() {
-  const lastId = localStorage.getItem(LS_CURRENT);
-  if (lastId) {
-    const data = lsGetFlow(lastId);
-    if (data) {
-      nodes = data.nodes || [];
-      document.getElementById('flow-name').value = data.name || '';
-      currentFlowId = lastId;
-      setSaveStatus('saved');
-      return;
+  if (!confirm('Excluir este fluxo?')) return;
+  try {
+    await fbDel(currentCol(), id);
+    if (id === currentFlowId) {
+      currentFlowId = null;
+      nodes = []; selected = null;
+      document.getElementById('flow-name').value = '';
+      setSaveStatus('');
+      render();
     }
+    renderFlowsList();
+  } catch(err) {
+    console.error('[deleteFlowEntry]', err);
+    alert('Erro ao excluir: ' + err.message);
   }
-  // first run — save the demo flow
-  currentFlowId = generateId();
-  autoSaveNow();
+}
+
+// ── Import JSON ──────────────────────────────────────────────
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      nodes = data.nodes || [];
+      const name = data.name || file.name.replace(/\.json$/i, '');
+      document.getElementById('flow-name').value = name;
+      currentFlowId = nameToId(name);
+      selected = null;
+      render();
+      await autoSaveNow();
+    } catch(err) { alert('JSON inválido: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ── Init — open blank, no flow loaded ────────────────────────
+(function initStorage() {
+  // Start blank: no flow loaded, canvas empty, status empty
+  nodes = []; selected = null; currentFlowId = null;
+  document.getElementById('flow-name').value = '';
+  setSaveStatus('');
+  render();
 })();
 
 // ═══════════════════════════════════════════════════════════
@@ -2945,14 +3368,14 @@ async function runNode(id) {
       addChatMsg('bot', '⚠ Hub sem fluxo de destino configurado.');
       return;
     }
-    // find the target flow by name in localStorage
-    const allFlows = lsGetIndex();
+    // find the target flow by name in Firestore
+    const allFlows = await lsGetIndex();
     const target = allFlows.find(f => f.name === n.targetFlow);
     if (!target) {
       addChatMsg('bot', `⚠ Fluxo "${n.targetFlow}" não encontrado.`);
       return;
     }
-    const data = lsGetFlow(target.id);
+    const data = await lsGetFlow(target.id);
     if (!data || !data.nodes?.length) {
       addChatMsg('bot', `⚠ Fluxo "${n.targetFlow}" está vazio.`);
       return;
@@ -3249,6 +3672,31 @@ document.addEventListener('keydown', e => {
 // INIT
 // ═══════════════════════════════════════════════════════════
 render();
+
+// ── Expose functions to global scope (required for inline onclick in module scripts) ──
+Object.assign(window, {
+  // Firebase / storage
+  openFlowsModal, closeFlowsModal,
+  openNewModal, closeNewModal, createNewFlow,
+  openLoadModal, closeLoadModal, loadFlowEntry, deleteFlowEntry,
+  importJSON, publishToProducao, scheduleAutoSave, autoSaveNow, nameToId,
+  switchEnv,
+  // Canvas / nodes
+  renderInspector, deleteNode, disconnectNode, startConnect,
+  addNode, addChoice, removeChoice, addValidation, removeValidation,
+  addAssignment, removeAssignment, addQueryParam, removeQueryParam,
+  addQueryMapping, removeQueryMapping, addOrientationImage, removeOrientationImage,
+  moveOrientationImage, oriNext, oriPrev, addCondRule, removeCondRule,
+  addCondAction, removeCondAction,
+  // Toolbar
+  autoLayout, clearAll, exportJSON, changeZoom,
+  ctxConnect, ctxDelete, ctxDisconnect, ctxDuplicate,
+  // UI
+  toggleInspector, toggleAcc, togglePreview, sendUserInput,
+  saveNode, resetChat, resetZoom,
+  renameVarFromSidebar,
+});
+
 </script>
 </body>
 </html>
