@@ -7,7 +7,6 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── versão24-05-13:16 ── */
 :root {
   --bg: #0f0f11;
   --bg2: #18181c;
@@ -942,6 +941,100 @@ html, body {
   border-top: 1px solid var(--border);
 }
 .acc-section.open .acc-body { display: block; }
+
+
+.login-divider {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--text3); font-size: 11px;
+}
+.login-divider::before, .login-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.login-google-btn {
+  width: 100%; padding: 9px; border-radius: var(--radius-sm);
+  background: var(--bg3); border: 1px solid var(--border-hi);
+  color: var(--text); font-size: 13px; font-family: inherit;
+  cursor: pointer; font-weight: 500; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+}
+.login-google-btn:hover { background: var(--bg4); border-color: var(--accent); }
+.login-google-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Login Screen ── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+}
+#login-screen.hidden { display: none; }
+.login-box {
+  background: var(--bg2); border: 1px solid var(--border-hi);
+  border-radius: 16px; padding: 40px 36px; width: 360px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.login-logo { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -.02em; text-align: center; }
+.login-logo span { color: var(--accent-hi); }
+.login-subtitle { font-size: 12px; color: var(--text3); text-align: center; margin-top: -10px; }
+.login-field { display: flex; flex-direction: column; gap: 6px; }
+.login-field label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.login-field input {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+  padding: 9px 12px; outline: none; font-family: inherit; transition: border-color .15s;
+}
+.login-field input:focus { border-color: var(--accent); }
+.login-btn {
+  width: 100%; padding: 10px; border-radius: var(--radius-sm);
+  background: var(--accent); border: none; color: #fff; font-size: 14px;
+  cursor: pointer; font-family: inherit; font-weight: 600; transition: background .15s; margin-top: 4px;
+}
+.login-btn:hover { background: var(--accent-hi); }
+.login-btn:disabled { opacity: .5; cursor: default; }
+.login-error { font-size: 12px; color: var(--red); text-align: center; min-height: 16px; }
+.role-badge {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  padding: 2px 8px; border-radius: 20px; margin-left: 6px;
+}
+.role-admin  { background: rgba(232,184,75,0.15);  color: #e8b84b; border: 1px solid rgba(232,184,75,0.3); }
+.role-editor { background: rgba(24,173,232,0.15);  color: var(--accent); border: 1px solid rgba(24,173,232,0.3); }
+.role-viewer { background: rgba(102,102,110,0.15); color: var(--gray); border: 1px solid rgba(102,102,110,0.3); }
+
+/* ── Manage Users Modal ── */
+#manage-users-modal .modal-box { width: 560px; }
+.user-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg3);
+  margin-bottom: 6px;
+}
+.user-row-email { flex: 1; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-row select {
+  background: var(--bg4); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 12px;
+  padding: 4px 8px; outline: none; font-family: inherit; cursor: pointer;
+}
+.user-row select:focus { border-color: var(--accent); }
+.user-row-del {
+  background: transparent; border: none; color: var(--text3);
+  cursor: pointer; font-size: 16px; padding: 0 4px; transition: color .12s;
+}
+.user-row-del:hover { color: var(--red); }
+.add-user-row {
+  display: flex; gap: 8px; margin-top: 10px;
+}
+.add-user-row input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px;
+  padding: 7px 10px; outline: none; font-family: inherit;
+}
+.add-user-row input:focus { border-color: var(--accent); }
+.add-user-row select {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 12px;
+  padding: 7px 10px; outline: none; font-family: inherit; cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -957,16 +1050,19 @@ html, body {
       <button id="env-btn-prod" class="env-btn" onclick="switchEnv('prod')">PROD</button>
     </div>
     <div class="spacer"></div>
-    <button class="top-btn" onclick="openNewModal()">＋ Novo</button>
+    <button class="top-btn" id="btn-new"     onclick="openNewModal()">＋ Novo</button>
     <button class="top-btn" onclick="openLoadModal()">📂 Carregar</button>
     <button class="top-btn" onclick="exportJSON()">↓ Exportar</button>
-    <label class="top-btn" style="cursor:pointer">↑ Importar
+    <label class="top-btn" id="btn-import" style="cursor:pointer">↑ Importar
       <input type="file" accept=".json" style="display:none" onchange="importJSON(this)">
     </label>
-    <button class="top-btn" onclick="autoLayout()">⊞ Organizar</button>
-    <button class="top-btn" onclick="clearAll()">Limpar</button>
+    <button class="top-btn" id="btn-layout" onclick="autoLayout()">⊞ Organizar</button>
+    <button class="top-btn" id="btn-clear"  onclick="clearAll()">Limpar</button>
     <button class="top-btn" id="btn-publish" onclick="publishToProducao()" style="background:rgba(62,207,142,0.12);border-color:rgba(62,207,142,0.35);color:#3ecf8e">🚀 Publicar</button>
     <button class="top-btn primary" id="btn-test" onclick="togglePreview()">▶ Testar</button>
+    <button class="top-btn" id="btn-manage-users" onclick="openManageUsers()" style="display:none">👥 Usuários</button>
+    <span   id="user-badge" style="font-size:11px;color:var(--text3);padding:0 6px;white-space:nowrap"></span>
+    <button class="top-btn" id="btn-logout" onclick="doLogout()" style="color:var(--red)">Sair</button>
   </div>
 
   <!-- Sidebar -->
@@ -1105,6 +1201,7 @@ html, body {
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // ═══════════════════════════════════════════════════════════
 // NODE TYPE DEFINITIONS
@@ -2919,17 +3016,27 @@ function clearAll() {
 // ═══════════════════════════════════════════════════════════
 // FIREBASE — MULTI-FLOW PERSISTENCE
 // ═══════════════════════════════════════════════════════════
-const firebaseConfig = {
-  apiKey: "AIzaSyCnnu5hLaqa46wap7ez-Jde9Nkja9sKUGk",
-  authDomain: "chatbot-eletrofro.firebaseapp.com",
-  projectId: "chatbot-eletrofro",
-  storageBucket: "chatbot-eletrofro.firebasestorage.app",
-  messagingSenderId: "551663260984",
-  appId: "1:551663260984:web:2e5ef44de23c73668eddcd"
-};
+// Credenciais carregadas do Cloudflare Worker (variáveis de ambiente seguras)
+const _cfgRes = await fetch('/config');
+const firebaseConfig = await _cfgRes.json();
 
 const _fbApp = initializeApp(firebaseConfig);
 const _db    = getFirestore(_fbApp);
+const _auth  = getAuth(_fbApp);
+
+// ═══════════════════════════════════════════════════════════
+// AUTH STATE
+// ═══════════════════════════════════════════════════════════
+let currentUser     = null;  // objeto do Firebase Auth
+let currentUserRole = null;  // 'admin' | 'editor' | 'viewer'
+
+// Roles e o que cada um pode fazer
+const ROLE_CAPS = {
+  admin:  { edit: true,  publish: true,  manage: true,  clear: true  },
+  editor: { edit: true,  publish: false, manage: false, clear: false },
+  viewer: { edit: false, publish: false, manage: false, clear: false },
+};
+function can(cap) { return !!ROLE_CAPS[currentUserRole]?.[cap]; }
 
 const COL_DEV  = 'Desenvolvimento';
 const COL_PROD = 'Producao';
@@ -3461,11 +3568,7 @@ async function runNode(id) {
 
   // ── ai ──
   if (n.type === 'ai') {
-    const typingEl = addChatMsg('bot', 'digitando…', true);
-    const rawPrompt = n.content.replace(/\{\{ia:\s*(.*?)\}\}/s, '$1');
-    const reply = await callAI(interpolate(rawPrompt));
-    typingEl.remove();
-    addChatMsg('bot', reply);
+    addChatMsg('bot', '🤖 (Módulo de IA não configurado)');
     if (n.next) setTimeout(() => runNode(n.next), 400);
     return;
   }
@@ -3620,17 +3723,7 @@ function interpolate(text) {
   return text.replace(/\{\{(\w+)\}\}/g, (_, k) => chatVars[k] !== undefined ? chatVars[k] : `{{${k}}}`);
 }
 
-async function callAI(prompt) {
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await res.json();
-    return data.content?.[0]?.text || '(sem resposta)';
-  } catch (err) { return '(erro ao chamar IA: ' + err.message + ')'; }
-}
+// callAI removido — integração de IA será adicionada futuramente com modelo próprio.
 
 // ═══════════════════════════════════════════════════════════
 // INSPECTOR COLLAPSE
@@ -3669,6 +3762,214 @@ document.addEventListener('keydown', e => {
   }
 });
 
+
+// ═══════════════════════════════════════════════════════════
+// AUTH — LOGIN / LOGOUT
+// ═══════════════════════════════════════════════════════════
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+  if (!email || !password) { errEl.textContent = 'Preencha e-mail e senha.'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando…'; errEl.textContent = '';
+  try {
+    await signInWithEmailAndPassword(_auth, email, password);
+    // onAuthStateChanged cuida do resto
+  } catch(e) {
+    const msgs = {
+      'auth/invalid-credential':    'E-mail ou senha incorretos.',
+      'auth/user-not-found':        'Usuário não encontrado.',
+      'auth/wrong-password':        'Senha incorreta.',
+      'auth/too-many-requests':     'Muitas tentativas. Tente mais tarde.',
+      'auth/invalid-email':         'E-mail inválido.',
+    };
+    errEl.textContent = msgs[e.code] || 'Erro ao entrar: ' + e.message;
+    btn.disabled = false; btn.textContent = 'Entrar';
+    const gBtn = document.getElementById('login-google-btn');
+    if (gBtn) gBtn.disabled = false;
+  }
+}
+
+async function doLoginGoogle() {
+  const btn   = document.getElementById('login-google-btn');
+  const errEl = document.getElementById('login-error');
+  btn.disabled = true; errEl.textContent = '';
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(_auth, provider);
+    // onAuthStateChanged cuida do resto
+  } catch(e) {
+    const msgs = {
+      'auth/popup-closed-by-user':    'Login cancelado.',
+      'auth/popup-blocked':           'Popup bloqueado pelo navegador. Libere popups para este site.',
+      'auth/account-exists-with-different-credential': 'Este e-mail já está cadastrado com outro método.',
+    };
+    errEl.textContent = msgs[e.code] || 'Erro ao entrar com Google: ' + e.message;
+    btn.disabled = false;
+  }
+}
+
+async function doLogout() {
+  await signOut(_auth);
+}
+
+// Chamado automaticamente quando o estado de auth muda
+onAuthStateChanged(_auth, async (user) => {
+  if (!user) {
+    // Não logado — mostra tela de login, esconde app
+    currentUser     = null;
+    currentUserRole = null;
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-btn').disabled = false;
+    document.getElementById('login-btn').textContent = 'Entrar';
+    const gBtn = document.getElementById('login-google-btn');
+    if (gBtn) gBtn.disabled = false;
+    return;
+  }
+
+  // Logado — busca o role do usuário no Firestore
+  currentUser = user;
+  let userDoc = await fbGet('_users', user.uid);
+
+  // Se não existe documento (ex: primeiro login com Google),
+  // cria automaticamente como viewer
+  if (!userDoc) {
+    userDoc = { email: user.email, role: 'viewer', createdAt: Date.now() };
+    await setDoc(doc(_db, '_users', user.uid), userDoc);
+  }
+
+  currentUserRole = userDoc.role || 'viewer';
+
+  // Aplica restrições de UI
+  applyRoleUI();
+
+  // Esconde login, mostra app
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').style.display = '';
+
+  // Mostra badge do usuário
+  const roleLabels = { admin: 'Admin', editor: 'Editor', viewer: 'Viewer' };
+  document.getElementById('user-badge').innerHTML =
+    user.email + ' <span class="role-badge role-' + currentUserRole + '">' + roleLabels[currentUserRole] + '</span>';
+});
+
+function applyRoleUI() {
+  const edit    = can('edit');
+  const publish = can('publish');
+  const manage  = can('manage');
+  const clear   = can('clear');
+
+  // Botões da topbar
+  setElVisible('btn-new',          edit);
+  setElVisible('btn-import',       edit);
+  setElVisible('btn-layout',       edit);
+  setElVisible('btn-clear',        clear);
+  setElVisible('btn-publish',      publish);
+  setElVisible('btn-manage-users', manage);
+
+  // Input do nome do fluxo
+  const flowNameInput = document.getElementById('flow-name');
+  if (flowNameInput) flowNameInput.readOnly = !edit;
+
+  // Canvas — desativa drag/edição para viewer
+  const canvasWrap = document.getElementById('canvas-wrap');
+  if (canvasWrap) canvasWrap.style.pointerEvents = edit ? '' : 'none';
+}
+
+function setElVisible(id, visible) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = visible ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// MANAGE USERS (somente admin)
+// ═══════════════════════════════════════════════════════════
+async function openManageUsers() {
+  if (!can('manage')) return;
+  await renderUsersList();
+  document.getElementById('manage-users-modal').classList.add('open');
+}
+function closeManageUsers() {
+  document.getElementById('manage-users-modal').classList.remove('open');
+}
+
+async function renderUsersList() {
+  const list = document.getElementById('users-list');
+  list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0">Carregando…</div>';
+  try {
+    const snap = await getDocs(collection(_db, '_users'));
+    if (snap.empty) { list.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0">Nenhum usuário cadastrado.</div>'; return; }
+    list.innerHTML = '';
+    snap.forEach(d => {
+      const u = d.data();
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      row.innerHTML = `
+        <span class="user-row-email" title="${u.email}">${u.email}</span>
+        <select onchange="changeUserRole('${d.id}', this.value)">
+          <option value="admin"  ${u.role==='admin'  ? 'selected':''}>Admin</option>
+          <option value="editor" ${u.role==='editor' ? 'selected':''}>Editor</option>
+          <option value="viewer" ${u.role==='viewer' ? 'selected':''}>Viewer</option>
+        </select>
+        ${d.id !== currentUser?.uid ? `<button class="user-row-del" onclick="deleteUserEntry('${d.id}')">🗑</button>` : '<span style="width:24px"></span>'}
+      `;
+      list.appendChild(row);
+    });
+  } catch(e) { list.innerHTML = '<div style="color:var(--red);font-size:12px">Erro ao carregar usuários.</div>'; }
+}
+
+async function changeUserRole(uid, newRole) {
+  try {
+    await setDoc(doc(_db, '_users', uid), { role: newRole }, { merge: true });
+  } catch(e) { alert('Erro ao alterar role: ' + e.message); }
+}
+
+async function deleteUserEntry(uid) {
+  if (!confirm('Remover acesso deste usuário?')) return;
+  try {
+    await deleteDoc(doc(_db, '_users', uid));
+    await renderUsersList();
+  } catch(e) { alert('Erro ao remover: ' + e.message); }
+}
+
+async function addUser() {
+  const email    = document.getElementById('new-user-email').value.trim();
+  const password = document.getElementById('new-user-password').value;
+  const role     = document.getElementById('new-user-role').value;
+  if (!email || !password) { alert('Preencha e-mail e senha do novo usuário.'); return; }
+
+  // Cria via Firebase Auth REST (não desloga o admin atual)
+  try {
+    const cfgRes  = await fetch('/config');
+    const cfg     = await cfgRes.json();
+    const apiKey  = cfg.apiKey;
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    // Salva role no Firestore
+    await setDoc(doc(_db, '_users', data.localId), { email, role, createdAt: Date.now() });
+    document.getElementById('new-user-email').value    = '';
+    document.getElementById('new-user-password').value = '';
+    await renderUsersList();
+  } catch(e) {
+    const msgs = {
+      'EMAIL_EXISTS': 'Este e-mail já está cadastrado.',
+      'WEAK_PASSWORD : Password should be at least 6 characters': 'Senha muito fraca (mín. 6 caracteres).',
+    };
+    alert(msgs[e.message] || 'Erro ao criar usuário: ' + e.message);
+  }
+}
+
+// Esconde o app enquanto não estiver logado (evita flash)
+document.getElementById('app').style.display = 'none';
+
+
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
@@ -3696,8 +3997,61 @@ Object.assign(window, {
   toggleInspector, toggleAcc, togglePreview, sendUserInput,
   saveNode, resetChat, resetZoom,
   renameVarFromSidebar,
+  // Auth
+  doLogin, doLoginGoogle, doLogout, openManageUsers, closeManageUsers,
+  addUser, changeUserRole, deleteUserEntry,
 });
 
 </script>
+
+<!-- ── Login Screen ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Eletrofrio<span>Chatbot</span></div>
+    <div class="login-subtitle">Faça login para acessar o construtor</div>
+    <div class="login-field">
+      <label>E-mail</label>
+      <input id="login-email" type="email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input id="login-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="login-error" class="login-error"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-divider"><span>ou</span></div>
+    <button class="login-google-btn" id="login-google-btn" onclick="doLoginGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.58-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      Entrar com Google
+    </button>
+  </div>
+</div>
+
+<!-- ── Manage Users Modal ── -->
+<div id="manage-users-modal" class="modal-bg" onclick="if(event.target===this)closeManageUsers()">
+  <div class="modal-box" style="width:560px">
+    <div class="modal-head">
+      <h3>👥 Gerenciar Usuários</h3>
+      <button class="mini-btn" onclick="closeManageUsers()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="users-list"></div>
+      <div class="add-user-row">
+        <input id="new-user-email" type="email" placeholder="novo@email.com">
+        <input id="new-user-password" type="password" placeholder="Senha inicial" style="width:140px">
+        <select id="new-user-role">
+          <option value="editor">Editor</option>
+          <option value="viewer">Viewer</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button class="top-btn primary" onclick="addUser()">Adicionar</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="top-btn" onclick="closeManageUsers()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
