@@ -80,18 +80,6 @@ html, body {
 }
 .config-field input:focus { border-color: var(--primary); }
 .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.config-color-wrap {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 8px 14px;
-  transition: border-color .15s; cursor: pointer;
-}
-.config-color-wrap:focus-within { border-color: var(--primary); }
-.config-color-wrap input[type="color"] {
-  width: 28px; height: 28px; border: none; padding: 0;
-  background: none; cursor: pointer; border-radius: 6px; flex-shrink: 0;
-}
-.config-color-label { font-size: 13px; color: var(--text2); }
 .btn-start {
   width: 100%; padding: 13px;
   background: var(--primary); border: none;
@@ -110,6 +98,32 @@ html, body {
   border-radius: var(--radius-xs); border: 1px solid rgba(240,96,96,0.2);
 }
 .config-error.show { display: block; }
+
+.qr-info {
+  display: none;
+  background: rgba(24,173,232,0.08);
+  border: 1px solid rgba(24,173,232,0.25);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  gap: 10px;
+  align-items: flex-start;
+}
+.qr-info.visible { display: flex; }
+.qr-info-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.qr-info-body { flex: 1; min-width: 0; }
+.qr-info-row {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--primary); margin-bottom: 4px;
+}
+.qr-info-nome {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qr-info-pedido {
+  font-size: 12px; color: var(--text2); margin-top: 2px; font-family: monospace;
+}
 
 /* ── Main layout ── */
 #app {
@@ -387,33 +401,33 @@ html, body {
 <div id="config-overlay">
   <div class="config-card">
     <div class="config-logo">Eletrofrio<span>Chat</span></div>
-    <div class="config-subtitle">Configure a instância do bot antes de iniciar</div>
+    <div class="config-subtitle">Preencha seus dados para iniciar o atendimento</div>
 
-    <div class="config-field">
-      <label>URL do JSON do bot</label>
-      <input id="cfg-url" type="url" placeholder="https://exemplo.com/bot.json" />
-    </div>
-
-    <div class="config-row">
-      <div class="config-field">
-        <label>Nome do bot</label>
-        <input id="cfg-name" type="text" placeholder="Assistente" value="Assistente" />
-      </div>
-      <div class="config-field">
-        <label>URL do avatar</label>
-        <input id="cfg-avatar" type="url" placeholder="https://…/avatar.png" />
+    <div class="qr-info" id="qr-info">
+      <div class="qr-info-icon">📋</div>
+      <div class="qr-info-body">
+        <div class="qr-info-row">Atendimento identificado</div>
+        <div class="qr-info-nome" id="qr-info-nome"></div>
+        <div class="qr-info-pedido" id="qr-info-pedido"></div>
       </div>
     </div>
 
     <div class="config-field">
-      <label>Cor primária</label>
-      <div class="config-color-wrap">
-        <input type="color" id="cfg-color" value="#18ade8" />
-        <span class="config-color-label" id="cfg-color-label">#18ade8</span>
-      </div>
+      <label>Nome</label>
+      <input id="cfg-user-name" type="text" placeholder="Seu nome completo" autocomplete="name" />
     </div>
 
-    <div id="cfg-error" class="config-error">Não foi possível carregar o JSON. Verifique a URL e tente novamente.</div>
+    <div class="config-field">
+      <label>Cargo</label>
+      <input id="cfg-user-cargo" type="text" placeholder="Seu cargo" />
+    </div>
+
+    <div class="config-field">
+      <label>Telefone</label>
+      <input id="cfg-user-phone" type="tel" placeholder="(00) 00000-0000" />
+    </div>
+
+    <div id="cfg-error" class="config-error">Por favor, preencha todos os campos.</div>
 
     <button class="btn-start" onclick="startBot()">Iniciar conversa →</button>
   </div>
@@ -458,12 +472,48 @@ html, body {
   </div>
 </div>
 
-<script>
+<script type="module">
+// ═══════════════════════════════════════════════════════════
+// FIREBASE SDK (via CDN — resolve CORS corretamente)
+// ═══════════════════════════════════════════════════════════
+import { initializeApp }              from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const _fbApp = initializeApp({
+  apiKey:            'AIzaSyCnnu5hLaqa46wap7ez-Jde9Nkja9sKUGk',
+  authDomain:        'chatbot-eletrofro.firebaseapp.com',
+  projectId:         'chatbot-eletrofro',
+  storageBucket:     'chatbot-eletrofro.firebasestorage.app',
+  messagingSenderId: '551663260984',
+  appId:             '1:551663260984:web:2e5ef44de23c73668eddcd'
+});
+const _db = getFirestore(_fbApp);
+
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
 let nodes       = [];
 let chatVars    = {};
+
+// ── Debug overlay visível na tela (sem precisar de DevTools) ──────────────
+// Para desativar: mude DBG_ENABLED para false
+const DBG_ENABLED = false;
+function dbg(...args) {
+  const msg = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+  console.log('[DBG]', msg);
+  if (!DBG_ENABLED) return;
+  let box = document.getElementById('_dbg_overlay');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = '_dbg_overlay';
+    box.style.cssText = 'position:fixed;bottom:60px;left:0;right:0;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.82);color:#0f0;font:11px/1.4 monospace;padding:6px 8px;z-index:99999;pointer-events:none;white-space:pre-wrap;word-break:break-all;';
+    document.body.appendChild(box);
+  }
+  const line = document.createElement('div');
+  line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
 let awaitingInput = false;
 let currentNodeId = null;
 let botName     = 'Assistente';
@@ -473,44 +523,174 @@ let timerTimeout = null;
 let timerInterval = null;
 
 // ═══════════════════════════════════════════════════════════
-// CONFIG
+// FIREBASE — carregar nós da coleção Producao
 // ═══════════════════════════════════════════════════════════
-document.getElementById('cfg-color').addEventListener('input', e => {
-  document.getElementById('cfg-color-label').textContent = e.target.value;
-});
+async function loadNodesFromFirebase() {
+  // ── Resolve qual documento é o fluxo publicado ATUAL ──
+  // O construtor grava um doc índice "_idx_" com { current: <id do fluxo publicado> }.
+  // Antes, este loader ignorava esse ponteiro e pegava o primeiro doc da coleção
+  // (ordem não garantida), o que podia carregar uma publicação antiga/errada.
+  const idxSnap = await getDoc(doc(_db, 'Producao', '_idx_'));
+  const currentId = idxSnap.exists() ? idxSnap.data()?.current : null;
 
-async function startBot() {
-  const url    = document.getElementById('cfg-url').value.trim();
-  const name   = document.getElementById('cfg-name').value.trim() || 'Assistente';
-  const avatar = document.getElementById('cfg-avatar').value.trim();
-  const color  = document.getElementById('cfg-color').value;
-  const errEl  = document.getElementById('cfg-error');
-  errEl.classList.remove('show');
+  const parseDoc = async (d) => {
+    if (!d) return null;
 
-  if (!url) { errEl.textContent = 'Informe a URL do JSON do bot.'; errEl.classList.add('show'); return; }
+    // ── Formato novo: nodes como string JSON (salvo após a correção do construtor) ──
+    if (typeof d.nodes === 'string') {
+      const parsed = JSON.parse(d.nodes);
+      if (parsed.length) {
+        // Verifica se o nó orientation tem images — pode estar vazio se foi publicado
+        // antes da correção do stringify no construtor.
+        const oriNode = parsed.find(n => n.type === 'orientation');
+        if (oriNode && (!oriNode.images || !oriNode.images.length)) {
+          dbg('parseDoc [novo]: orientation sem images → tentando GitHub...');
+          const fromGH = await loadNodesFromGitHub();
+          if (fromGH) return fromGH;
+          dbg('parseDoc [novo]: GitHub falhou → aplicando patch hardcoded');
+          return patchOrientationNodes(parsed);
+        }
+        return parsed;
+      }
+    }
 
-  // show loader
-  document.getElementById('config-overlay').classList.add('hidden');
-  document.getElementById('loading-screen').classList.remove('hidden');
+    // ── Formato legado: array nativo ──
+    // Firestore perde campos aninhados em arrays. Tenta resgatar via JSON roundtrip.
+    if (Array.isArray(d.nodes) && d.nodes.length) {
+      const normalized = JSON.parse(JSON.stringify(d.nodes));
+      // Verifica se orientation perdeu images — se sim, busca do GitHub como fallback
+      const oriNode = normalized.find(n => n.type === 'orientation');
+      if (oriNode && (!oriNode.images || !oriNode.images.length)) {
+        dbg('parseDoc [legado]: orientation sem images → tentando GitHub...');
+        const fromGH = await loadNodesFromGitHub();
+        if (fromGH) return fromGH;
+        dbg('parseDoc [legado]: GitHub falhou → aplicando patch hardcoded');
+        return patchOrientationNodes(normalized);
+      }
+      return normalized;
+    }
 
+    if (typeof d.json === 'string') {
+      const parsed = JSON.parse(d.json);
+      if (Array.isArray(parsed.nodes)) return parsed.nodes;
+    }
+
+    return null;
+  };
+
+  // 1) Tenta o documento apontado pelo índice (fluxo realmente publicado)
+  if (currentId) {
+    console.log('[DEBUG] _idx_.current =', currentId);
+    const targetSnap = await getDoc(doc(_db, 'Producao', currentId));
+    if (targetSnap.exists()) {
+      const rawData = targetSnap.data();
+      console.log('[DEBUG] Documento Producao/' + currentId + ' publishedAt:', rawData.publishedAt ? new Date(rawData.publishedAt).toLocaleString() : '(sem publishedAt)');
+      const result = await parseDoc(rawData);
+      if (result) {
+        const oriNode = result.find(n => n.type === 'orientation');
+        console.log('[DEBUG] Nó orientation encontrado:', oriNode ? oriNode.id : '(nenhum)', '| images:', oriNode ? oriNode.images : null);
+        return result;
+      }
+    } else {
+      console.warn('[Firebase] _idx_.current aponta para "' + currentId + '", mas o documento não existe.');
+    }
+  } else {
+    console.warn('[Firebase] Documento _idx_ ausente ou sem campo "current". Caindo para varredura da coleção.');
+  }
+
+  // 2) Fallback: varre a coleção (comportamento antigo), caso o índice esteja ausente/quebrado
+  const snap = await getDocs(collection(_db, 'Producao'));
+  if (snap.empty) throw new Error('Nenhum documento encontrado na coleção Producao.');
+
+  for (const docSnap of snap.docs) {
+    if (docSnap.id === '_idx_') continue;
+    const result = await parseDoc(docSnap.data());
+    if (result) return result;
+  }
+  throw new Error('Nenhum documento válido encontrado na coleção Producao.');
+}
+
+async function loadNodesFromGitHub() {
+  // Busca o JSON do repositório GitHub como fallback quando o Firestore perde dados aninhados
+  const url = 'https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/chatbot-at.json';
   try {
-    const res  = await fetch(url);
+    const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    nodes = data.nodes || [];
-    if (!nodes.length) throw new Error('Nenhum nó encontrado no JSON.');
-  } catch(err) {
-    document.getElementById('loading-screen').classList.add('hidden');
-    document.getElementById('config-overlay').classList.remove('hidden');
-    errEl.textContent = 'Erro ao carregar: ' + err.message;
+    if (!Array.isArray(data.nodes) || !data.nodes.length) throw new Error('JSON do GitHub inválido.');
+    console.log('[GitHub] Fluxo carregado com sucesso, nós:', data.nodes.length);
+    return data.nodes;
+  } catch(e) {
+    console.warn('[GitHub] Falhou:', e.message, '— aplicando fallback de imagens hardcoded.');
+    return null; // sinaliza para o caller usar patch local
+  }
+}
+
+// Imagens de orientação embutidas como fallback (usadas se Firebase e GitHub falharem)
+const ORIENTATION_IMAGES_FALLBACK = [
+  { url: 'https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/assets/Expositor.jpeg',         caption: 'Expositor' },
+  { url: 'https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/assets/For%C3%A7ador.jpeg',     caption: 'Forçador de ar' },
+  { url: 'https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/assets/HIGH%20PACK.jpeg',       caption: 'Rack' },
+  { url: 'https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/assets/Porta_camara.jpeg',      caption: 'Porta da câmara' },
+  { url: 'https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/assets/QDL.jpeg',               caption: 'Quadro de linhas' },
+];
+
+// Aplica o fallback hardcoded nos nós que perderam images
+function patchOrientationNodes(nodeList) {
+  return nodeList.map(n => {
+    if (n.type === 'orientation' && (!n.images || !n.images.length)) {
+      dbg('patchOrientationNodes: aplicando ORIENTATION_IMAGES_FALLBACK no nó ' + n.id);
+      return { ...n, images: ORIENTATION_IMAGES_FALLBACK };
+    }
+    return n;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+async function startBot() {
+  const userName  = document.getElementById('cfg-user-name').value.trim();
+  const userCargo = document.getElementById('cfg-user-cargo').value.trim();
+  const userPhone = document.getElementById('cfg-user-phone').value.trim();
+  const errEl     = document.getElementById('cfg-error');
+  errEl.classList.remove('show');
+
+  if (!userName || !userCargo || !userPhone) {
+    errEl.textContent = 'Por favor, preencha todos os campos antes de iniciar.';
     errEl.classList.add('show');
     return;
   }
 
-  // apply config
-  botName      = name;
-  botAvatar    = avatar;
-  primaryColor = color;
+  // Store user info in chatVars so the bot can use {{userName}}, {{userCargo}}, {{userPhone}}
+  chatVars.userName  = userName;
+  chatVars.userCargo = userCargo;
+  chatVars.userPhone = userPhone;
+
+  // Injeta variáveis vindas da URL (ex: ?pedido=11805424&nome=Supermercado+Silva)
+  // Geradas pelo qrgen.html e embutidas no QR code escaneado pelo cliente.
+  const _urlParams = new URLSearchParams(window.location.search);
+  if (_urlParams.get('pedido')) chatVars.pedido = _urlParams.get('pedido');
+  if (_urlParams.get('nome'))   chatVars.nome   = _urlParams.get('nome');
+
+  document.getElementById('config-overlay').classList.add('hidden');
+  document.getElementById('loading-screen').classList.remove('hidden');
+
+  try {
+    nodes = await loadNodesFromFirebase();
+    if (!nodes.length) throw new Error('Nenhum nó encontrado nos dados do Firebase.');
+  } catch(err) {
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('config-overlay').classList.remove('hidden');
+    errEl.textContent = 'Erro: ' + (err.code ? err.code + ' — ' : '') + err.message;
+    errEl.classList.add('show');
+    console.error('[Firebase] Erro completo:', err);
+    return;
+  }
+
+  botName      = 'Assistente Eletrofrio';
+  botAvatar    = null;
+  primaryColor = '#18ade8';
   applyTheme();
   applyIdentity();
 
@@ -560,7 +740,9 @@ function openConfig() {
 // CHAT ENGINE
 // ═══════════════════════════════════════════════════════════
 function startConversation() {
-  chatVars = {}; awaitingInput = false; currentNodeId = null;
+  // Preserve user identification across restarts
+  const preserved = { userName: chatVars.userName, userCargo: chatVars.userCargo, userPhone: chatVars.userPhone };
+  chatVars = { ...preserved }; awaitingInput = false; currentNodeId = null;
   clearTimer();
   document.getElementById('messages').innerHTML = '';
   document.getElementById('chat-input').value = '';
@@ -585,8 +767,13 @@ function findStartNode(nodeList) {
 
 async function runNode(id) {
   if (!id) return;
+  const matches = nodes.filter(x => x.id === id);
+  if (matches.length > 1) {
+    console.error('[DEBUG] ID DUPLICADO! Existem', matches.length, 'nós com id="' + id + '":', matches);
+  }
   const n = nodes.find(x => x.id === id);
   if (!n) return;
+  dbg('runNode → ' + id + ' | type:' + n.type + ' | images:' + (n.images ? n.images.length : 'none'));
   currentNodeId = id;
   clearTimer();
 
@@ -696,8 +883,7 @@ async function runNode(id) {
   // ── orientation ──
   if (n.type === 'orientation') {
     showOrientation(n);
-    if (n.next) setTimeout(() => runNode(n.next), 500);
-    return;
+    return; // navigation handled inside showOrientation via "Continuar" button
   }
 
   // ── message (default) ──
@@ -795,33 +981,59 @@ function showChoices(n) {
 // ═══════════════════════════════════════════════════════════
 function showOrientation(n) {
   const imgs = n.images || [];
+  dbg('showOrientation nó=' + n.id + ' imgs.length=' + imgs.length + (imgs[0] ? ' url[0]=' + imgs[0].url : ''));
   if (n.content) addBotMsg(interpolate(n.content));
-  if (!imgs.length) return;
+
+  if (!imgs.length) {
+    dbg('showOrientation: SEM IMAGENS → pulando card, indo para next=' + n.next);
+    if (n.next) setTimeout(() => runNode(n.next), 400);
+    return;
+  }
 
   const card = document.createElement('div');
   card.className = 'orientation-card';
-  card.style.marginLeft = '38px';
 
   let idx = 0;
   const renderCard = () => {
     const img = imgs[idx];
+    const isLast = idx === imgs.length - 1;
+    const imgUrl = (img.url || '').trim();
     card.innerHTML = `
       <div class="orientation-img-wrap">
-        ${img.url
-          ? `<img src="${img.url}" alt="${img.caption||''}" onerror="this.outerHTML='<div class=\\'orientation-img-placeholder\\'>🖼 Imagem não disponível</div>'">`
+        ${imgUrl
+          ? `<img src="${imgUrl}" alt="${img.caption||''}" onerror="this.outerHTML='<div class=\'orientation-img-placeholder\'>🖼 Imagem não disponível</div>'">`
           : `<div class="orientation-img-placeholder">🖼 Sem imagem</div>`}
       </div>
       ${img.caption ? `<div class="orientation-caption">${img.caption}</div>` : ''}
       <div class="orientation-nav">
         <button class="orientation-nav-btn" id="ori-prev" style="border:1px solid var(--border);background:var(--bg4);color:var(--text2)" ${idx===0?'disabled':''}>◀ Anterior</button>
         <span class="orientation-counter">${idx+1} / ${imgs.length}</span>
-        <button class="orientation-nav-btn" id="ori-next" style="border:1px solid ${primaryColor};background:rgba(${hexToRgb(primaryColor)},0.10);color:${primaryColor}" ${idx===imgs.length-1?'disabled':''}>Próximo ▶</button>
-      </div>`;
+        <button class="orientation-nav-btn" id="ori-next" style="border:1px solid ${primaryColor};background:rgba(${hexToRgb(primaryColor)},0.10);color:${primaryColor}" ${isLast?'disabled':''}>Próximo ▶</button>
+      </div>
+      ${isLast ? `<button class="orientation-continue-btn" id="ori-continue" style="width:100%;padding:11px;margin-top:0;background:${primaryColor};border:none;border-radius:0 0 var(--radius) var(--radius);color:#fff;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;">Continuar ✓</button>` : ``}`;
     card.querySelector('#ori-prev').onclick = () => { if(idx>0){idx--;renderCard();} };
-    card.querySelector('#ori-next').onclick = () => { if(idx<imgs.length-1){idx++;renderCard();} };
+    const nextBtn = card.querySelector('#ori-next');
+    if (nextBtn) nextBtn.onclick = () => { if(idx<imgs.length-1){idx++;renderCard();} };
+    const contBtn = card.querySelector('#ori-continue');
+    if (contBtn) contBtn.onclick = () => {
+      contBtn.disabled = true;
+      contBtn.textContent = '✓ Visto';
+      contBtn.style.opacity = '0.5';
+      if (n.next) setTimeout(() => runNode(n.next), 350);
+    };
   };
   renderCard();
-  appendToMessages(card);
+
+  // Envolve o card numa bubble-row igual às mensagens do bot
+  const row = document.createElement('div');
+  row.className = 'bubble-row bot';
+  const av = document.createElement('div');
+  av.className = 'bubble-avatar';
+  if (botAvatar) av.innerHTML = `<img src="${botAvatar}" onerror="this.parentElement.textContent='🤖'">`;
+  else av.textContent = '🤖';
+  row.appendChild(av);
+  row.appendChild(card);
+  appendToMessages(row);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -896,7 +1108,12 @@ function addHubDivider(label) {
 function appendToMessages(el) {
   const c = document.getElementById('messages');
   c.appendChild(el);
-  c.scrollTop = c.scrollHeight;
+  // Usa requestAnimationFrame para garantir que o elemento foi pintado
+  // (com altura real) antes de rolar — especialmente importante para o card
+  // de orientação que tem imagens e altura variável.
+  requestAnimationFrame(() => {
+    c.scrollTop = c.scrollHeight;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -993,6 +1210,27 @@ function hexToRgb(hex) {
   const h = hex.replace('#','');
   return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)].join(',');
 }
+
+// ═══════════════════════════════════════════════════════════
+// EXPOR FUNÇÕES AO ESCOPO GLOBAL (necessário com type="module")
+// ═══════════════════════════════════════════════════════════
+window.startBot    = startBot;
+window.openConfig  = openConfig;
+window.restartChat = restartChat;
+window.sendInput   = sendInput;
+
+// Exibe banner de identificação na home se pedido/nome vieram na URL (QR code)
+(function() {
+  const p = new URLSearchParams(window.location.search);
+  const pedido = p.get('pedido');
+  const nome   = p.get('nome');
+  if (!pedido && !nome) return;
+  const banner = document.getElementById('qr-info');
+  if (!banner) return;
+  document.getElementById('qr-info-nome').textContent   = nome   || '—';
+  document.getElementById('qr-info-pedido').textContent = pedido ? 'Pedido: ' + pedido : '';
+  banner.classList.add('visible');
+})();
 </script>
 </body>
 </html>

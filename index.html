@@ -153,6 +153,8 @@ html, body {
   grid-column: 2;
   grid-row: 2;
 }
+#canvas-wrap.panning-mid,
+#canvas-wrap.panning-mid * { cursor: grabbing !important; }
 #canvas {
   position: absolute; top: 0; left: 0;
   width: 3000px; height: 3000px;
@@ -1295,6 +1297,13 @@ function render() {
   canvas.querySelectorAll('.flow-node').forEach(e => e.remove());
 
   nodes.forEach(n => {
+    // Sanitize node — garante campos mínimos para evitar erros ao carregar fluxos do Firebase
+    if (!n.type || !NODE_TYPES[n.type]) n.type = 'message';
+    if (n.content == null) n.content = '';
+    if (n.x == null) n.x = 100;
+    if (n.y == null) n.y = 100;
+    if (!n.id) n.id = 'n' + Date.now() + Math.random();
+
     const t  = NODE_TYPES[n.type];
     const el = document.createElement('div');
     el.className = `flow-node ${t.cls}${selected === n.id ? ' selected' : ''}`;
@@ -2785,9 +2794,20 @@ function onNodeMouseDown(e, id) {
   document.getElementById('node-' + id).classList.add('dragging');
 }
 
+// ── Pan: botão do meio (scroll) ou esquerdo no fundo do canvas ──
+// Bloqueia o scroll automático do Chrome ao pressionar botão do meio
+document.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }, { capture: true });
+
 document.getElementById('canvas-wrap').addEventListener('mousedown', e => {
-  if (e.button === 1 || (e.button === 0 && (e.target.id === 'canvas-wrap' || e.target.id === 'canvas' || e.target.id === 'svg-arrows'))) {
-    isPanning = true; panStartX = e.clientX - panX; panStartY = e.clientY - panY; e.preventDefault();
+  const onBg = e.target.id === 'canvas-wrap' || e.target.id === 'canvas' || e.target.id === 'svg-arrows';
+  if (e.button === 1 || (e.button === 0 && onBg)) {
+    isPanning = true;
+    panStartX = e.clientX - panX;
+    panStartY = e.clientY - panY;
+    e.preventDefault();
+    if (e.button === 1) {
+      document.getElementById('canvas-wrap').classList.add('panning-mid');
+    }
   }
 });
 
@@ -2803,17 +2823,25 @@ document.addEventListener('mousemove', e => {
   if (isPanning) { panX = e.clientX - panStartX; panY = e.clientY - panStartY; applyTransform(); }
 });
 
-document.addEventListener('mouseup', () => {
+document.addEventListener('mouseup', e => {
   if (dragNodeId) {
     document.getElementById('node-' + dragNodeId)?.classList.remove('dragging');
     dragNodeId = null;
     scheduleAutoSave();
   }
-  isPanning = false;
+  if (isPanning) {
+    document.getElementById('canvas-wrap').classList.remove('panning-mid');
+    isPanning = false;
+  }
 });
 
 document.getElementById('canvas-wrap').addEventListener('click', e => {
   if (e.target.id === 'canvas-wrap' || e.target.id === 'canvas') { selected = null; render(); }
+});
+
+// Evita o menu de scroll automático do navegador ao clicar com o botão do meio no canvas
+document.getElementById('canvas-wrap').addEventListener('auxclick', e => {
+  if (e.button === 1) e.preventDefault();
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -3082,11 +3110,11 @@ async function fbDel(col, id) {
 
 // ── Index per collection ─────────────────────────────────────
 async function getIndex(col) {
-  const d = await fbGet(col, '__index__');
+  const d = await fbGet(col, '_idx_');
   return d || { list: [], current: null };
 }
 async function saveIndex(col, list, currentId) {
-  await fbSet(col, '__index__', { list, current: currentId, updatedAt: Date.now() });
+  await fbSet(col, '_idx_', { list, current: currentId, updatedAt: Date.now() });
 }
 
 // ── Flow CRUD ────────────────────────────────────────────────
@@ -3095,7 +3123,7 @@ async function lsGetFlow(id, col) {
 }
 async function lsSaveFlow(id, name, nodesArr, col) {
   col = col || currentCol();
-  const data = { id, name, nodes: nodesArr, savedAt: Date.now() };
+  const data = { id, name, nodes: JSON.stringify(nodesArr), savedAt: Date.now() };
   await fbSet(col, id, data);
   const idx = await getIndex(col);
   const entry = idx.list.find(f => f.id === id);
@@ -3160,7 +3188,7 @@ async function publishToProducao() {
     await autoSaveNow();
     const name = document.getElementById('flow-name').value.trim() || 'Sem nome';
     const id   = nameToId(name);
-    await fbSet(COL_PROD, id, { id, name, nodes, publishedAt: Date.now() });
+    await fbSet(COL_PROD, id, { id, name, nodes: JSON.stringify(nodes), publishedAt: Date.now() });
     // update prod index
     const idx = await getIndex(COL_PROD);
     const entry = idx.list.find(f => f.id === id);
@@ -3222,7 +3250,7 @@ async function renderFlowsList() {
     const snap = await getDocs(collection(_db, col));
     const flows = [];
     snap.forEach(docSnap => {
-      if (docSnap.id === '__index__') return;
+      if (docSnap.id === '_idx_') return;
       const d = docSnap.data();
       flows.push({ id: docSnap.id, name: d.name || docSnap.id, savedAt: d.savedAt || d.publishedAt || 0 });
     });
@@ -3262,10 +3290,21 @@ async function renderFlowsList() {
 async function loadFlowEntry(id) {
   const data = await lsGetFlow(id);
   if (!data) { alert('Fluxo não encontrado.'); return; }
-  nodes = data.nodes || [];
+  // Suporta nodes salvo como string JSON (novo formato) ou array direto (legado)
+  const rawNodes = typeof data.nodes === 'string' ? JSON.parse(data.nodes) : (data.nodes || []);
+  // Sanitiza nós ao carregar para evitar erros com campos ausentes
+  nodes = rawNodes.map(n => ({
+    ...n,
+    content: n.content != null ? n.content : '',
+    x: n.x != null ? n.x : 100,
+    y: n.y != null ? n.y : 100,
+    type: (n.type && NODE_TYPES[n.type]) ? n.type : 'message',
+  }));
   document.getElementById('flow-name').value = data.name || '';
   currentFlowId = id;
-  selected = null; render();
+  selected = null;
+  render();
+  applyRoleUI(); // reaplica permissões após carregar fluxo
   setSaveStatus('saved');
   closeLoadModal();
 }
@@ -3298,12 +3337,22 @@ function importJSON(input) {
   reader.onload = async (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      nodes = data.nodes || [];
+      // Suporta nodes salvo como string JSON (novo formato) ou array direto (legado)
+      const rawNodes = typeof data.nodes === 'string' ? JSON.parse(data.nodes) : (data.nodes || []);
+      // Sanitiza nós ao importar para evitar erros com campos ausentes
+      nodes = rawNodes.map(n => ({
+        ...n,
+        content: n.content != null ? n.content : '',
+        x: n.x != null ? n.x : 100,
+        y: n.y != null ? n.y : 100,
+        type: (n.type && NODE_TYPES[n.type]) ? n.type : 'message',
+      }));
       const name = data.name || file.name.replace(/\.json$/i, '');
       document.getElementById('flow-name').value = name;
       currentFlowId = nameToId(name);
       selected = null;
       render();
+      applyRoleUI(); // reaplica permissões após importar fluxo
       await autoSaveNow();
     } catch(err) { alert('JSON inválido: ' + err.message); }
   };

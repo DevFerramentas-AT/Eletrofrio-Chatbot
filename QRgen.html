@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de QR Code — Eletrofrio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #18ade8;
+    --primary-dark: #1090c4;
+    --bg: #0f1117;
+    --bg2: #181c27;
+    --bg3: #1e2333;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f2f5;
+    --text2: #8b93a8;
+    --radius: 12px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 40px 20px 60px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 40px;
+    width: 100%;
+    max-width: 560px;
+  }
+  .logo {
+    width: 42px; height: 42px;
+    background: var(--primary);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .header-text h1 {
+    font-size: 18px; font-weight: 600; color: var(--text);
+  }
+  .header-text p {
+    font-size: 13px; color: var(--text2); margin-top: 2px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* Form */
+  .field { margin-bottom: 18px; }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: var(--font);
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type="text"]:focus { border-color: var(--primary); }
+  input[type="text"]::placeholder { color: var(--text2); }
+
+  .url-preview {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: monospace;
+    word-break: break-all;
+    min-height: 38px;
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .url-preview span { color: var(--primary); }
+
+  .btn-gerar {
+    width: 100%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background .15s, opacity .15s;
+  }
+  .btn-gerar:hover { background: var(--primary-dark); }
+  .btn-gerar:disabled { opacity: .5; cursor: default; }
+
+  /* QR result */
+  .result {
+    display: none;
+    margin-top: 28px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 560px;
+    text-align: center;
+  }
+  .result.visible { display: block; }
+
+  .result-label {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .result-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .result-pedido {
+    font-size: 13px;
+    color: var(--primary);
+    margin-bottom: 24px;
+    font-family: monospace;
+  }
+
+  #qr-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  #qr-container canvas, #qr-container img {
+    border-radius: 12px;
+    border: 8px solid #fff;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-sec {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    font-family: var(--font);
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .btn-sec:hover { border-color: var(--primary); color: var(--primary); }
+
+  .btn-print {
+    background: var(--primary);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-print:hover { background: var(--primary-dark); }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; padding: 0; justify-content: center; }
+    .header, .card, .btn-row { display: none !important; }
+    .result { display: block !important; border: none; background: #fff; color: #000; }
+    .result-label { color: #666; }
+    .result-name { color: #000; }
+    .result-pedido { color: #1090c4; }
+    #qr-container canvas, #qr-container img { border-color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">❄️</div>
+  <div class="header-text">
+    <h1>Gerador de QR Code</h1>
+    <p>Eletrofrio — Atendimento ao cliente</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="field">
+    <label>URL base do chatbot</label>
+    <input type="text" id="base-url" placeholder="https://eletrofrio.pages.dev/interface.html" value="">
+  </div>
+  <div class="field">
+    <label>Número do pedido</label>
+    <input type="text" id="pedido" placeholder="Ex: 11805424" oninput="atualizarPreview()">
+  </div>
+  <div class="field">
+    <label>Nome da loja / cliente</label>
+    <input type="text" id="nome" placeholder="Ex: Supermercado Silva" oninput="atualizarPreview()">
+  </div>
+  <div class="field">
+    <label>URL que será gerada</label>
+    <div class="url-preview" id="url-preview">Preencha os campos acima...</div>
+  </div>
+  <button class="btn-gerar" id="btn-gerar" onclick="gerarQR()" disabled>Gerar QR Code</button>
+</div>
+
+<div class="result" id="result">
+  <div class="result-label">QR Code para o cliente</div>
+  <div class="result-name" id="res-nome"></div>
+  <div class="result-pedido" id="res-pedido"></div>
+  <div id="qr-container"></div>
+  <div class="btn-row">
+    <button class="btn-sec" onclick="copiarURL()">📋 Copiar URL</button>
+    <button class="btn-sec" onclick="novoQR()">↩ Novo QR</button>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+</div>
+
+<script>
+  // Tenta pegar a URL base do mesmo domínio automaticamente
+  const autoBase = window.location.origin + window.location.pathname.replace('qrgen.html', 'interface.html');
+  document.getElementById('base-url').value = autoBase;
+
+  let urlAtual = '';
+
+  function atualizarPreview() {
+    const base   = document.getElementById('base-url').value.trim();
+    const pedido = document.getElementById('pedido').value.trim();
+    const nome   = document.getElementById('nome').value.trim();
+    const btn    = document.getElementById('btn-gerar');
+    const preview = document.getElementById('url-preview');
+
+    if (!pedido && !nome) {
+      preview.innerHTML = 'Preencha os campos acima...';
+      btn.disabled = true;
+      urlAtual = '';
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (pedido) params.set('pedido', pedido);
+    if (nome)   params.set('nome', nome);
+
+    urlAtual = base + (base.includes('?') ? '&' : '?') + params.toString();
+
+    // Destaca os parâmetros na preview
+    const [urlBase, urlQuery] = urlAtual.split('?');
+    preview.innerHTML = urlBase + '?<span>' + urlQuery + '</span>';
+
+    btn.disabled = !(pedido || nome);
+  }
+
+  function gerarQR() {
+    if (!urlAtual) return;
+
+    const pedido = document.getElementById('pedido').value.trim();
+    const nome   = document.getElementById('nome').value.trim();
+
+    // Atualiza info no resultado
+    document.getElementById('res-nome').textContent   = nome   || '—';
+    document.getElementById('res-pedido').textContent = 'Pedido: ' + (pedido || '—');
+
+    // Limpa QR anterior
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';
+
+    new QRCode(container, {
+      text:         urlAtual,
+      width:        240,
+      height:       240,
+      colorDark:    '#000000',
+      colorLight:   '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+
+    document.getElementById('result').classList.add('visible');
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function copiarURL() {
+    if (!urlAtual) return;
+    navigator.clipboard.writeText(urlAtual).then(() => {
+      const btn = document.querySelector('.btn-sec');
+      const original = btn.textContent;
+      btn.textContent = '✓ Copiado!';
+      setTimeout(() => btn.textContent = original, 2000);
+    });
+  }
+
+  function novoQR() {
+    document.getElementById('pedido').value = '';
+    document.getElementById('nome').value   = '';
+    document.getElementById('result').classList.remove('visible');
+    document.getElementById('url-preview').innerHTML = 'Preencha os campos acima...';
+    document.getElementById('btn-gerar').disabled = true;
+    document.getElementById('qr-container').innerHTML = '';
+    urlAtual = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Inicializa preview com a URL base
+  atualizarPreview();
+</script>
+</body>
+</html>
