@@ -229,12 +229,26 @@
 
   /* Print styles */
   @media print {
-    body { background: #fff; padding: 0; justify-content: center; }
+    body { background: #fff; margin: 0; padding: 0; display: block; }
     .header, .card, .btn-row { display: none !important; }
-    .result { display: block !important; border: none; background: #fff; padding: 0; }
-    .etiqueta { box-shadow: none; width: 8cm; }
+    .result {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: #fff;
+    }
+    .etiqueta {
+      box-shadow: none;
+      width: 8cm;
+      border: 2px solid var(--primary-dark);
+    }
   }
 </style>
+<style id="tamanho-pagina-impressao"></style>
 </head>
 <body>
 
@@ -273,7 +287,7 @@
   <div class="btn-row">
     <button class="btn-sec" onclick="copiarURL()">📋 Copiar URL</button>
     <button class="btn-sec" onclick="novoQR()">↩ Novo QR</button>
-    <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+    <button class="btn-print" onclick="ajustarPaginaImpressao(); window.print()">🖨️ Imprimir</button>
   </div>
 </div>
 
@@ -308,77 +322,155 @@
     btn.disabled = !(pedido || nome);
   }
 
-  // Desenha o selo de atendimento (fone de ouvido) no centro do QR — versão
-  // discreta: menor e sem cor chapada forte, pra combinar com o QR em vez de destoar.
-  function desenharIconeCentral(ctx, cx, cy, r) {
-    // Fundo branco só o suficiente para abrir espaço no meio do QR
-    ctx.fillStyle = '#ffffff';
+  // Caminho de retângulo arredondado usando arcTo (suporte universal, sem depender de roundRect)
+  function caminhoRetArredondado(ctx, x, y, w, h, r) {
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // Extrai a matriz de módulos (claro/escuro) do QR usando o QRCode.js internamente,
+  // sem depender do desenho padrão dele (que só faz quadrados sólidos).
+  function obterMatrizQR(texto) {
+    const tmp = document.createElement('div');
+    tmp.style.position = 'absolute';
+    tmp.style.left = '-9999px';
+    document.body.appendChild(tmp);
+    const qr = new QRCode(tmp, { text: texto, correctLevel: QRCode.CorrectLevel.H });
+    const modelo = qr._oQRCode;
+    const n = modelo.getModuleCount();
+    const matriz = [];
+    for (let r = 0; r < n; r++) {
+      const linha = [];
+      for (let c = 0; c < n; c++) linha.push(modelo.isDark(r, c));
+      matriz.push(linha);
+    }
+    document.body.removeChild(tmp);
+    return matriz;
+  }
+
+  // Desenha o selo de atendimento (fone de ouvido) dentro de uma caixa arredondada central
+  function desenharSeloAtendimento(ctx, cx, cy, boxSize, cor) {
+    const x = cx - boxSize / 2;
+    const y = cy - boxSize / 2;
+    const raio = boxSize * 0.24;
+
+    // Caixa branca de fundo
+    ctx.fillStyle = '#ffffff';
+    caminhoRetArredondado(ctx, x, y, boxSize, boxSize, raio);
     ctx.fill();
-    ctx.lineWidth = Math.max(1.2, r * 0.06);
-    ctx.strokeStyle = '#18ade8';
+
+    // Borda colorida
+    const borda = boxSize * 0.07;
+    ctx.lineWidth = borda;
+    ctx.strokeStyle = cor;
+    caminhoRetArredondado(ctx, x + borda / 2, y + borda / 2, boxSize - borda, boxSize - borda, raio);
     ctx.stroke();
 
-    ctx.fillStyle = '#18ade8';
-    ctx.strokeStyle = '#18ade8';
+    // Ícone do fone de ouvido, centralizado na caixa
+    const s = boxSize * 0.19;
+    ctx.fillStyle = cor;
+    ctx.strokeStyle = cor;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    const s = r * 0.6;
-
-    // Arco do headset
-    ctx.lineWidth = s * 0.28;
+    ctx.lineWidth = s * 0.26;
     ctx.beginPath();
     ctx.arc(cx, cy - s * 0.1, s * 0.95, Math.PI * 1.08, Math.PI * 1.92);
     ctx.stroke();
 
-    // Fone esquerdo
     ctx.beginPath();
     ctx.ellipse(cx - s * 0.95, cy + s * 0.35, s * 0.26, s * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Fone direito
     ctx.beginPath();
     ctx.ellipse(cx + s * 0.95, cy + s * 0.35, s * 0.26, s * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Haste do microfone
     ctx.lineWidth = s * 0.15;
     ctx.beginPath();
     ctx.moveTo(cx + s * 0.95, cy + s * 0.6);
     ctx.quadraticCurveTo(cx + s * 0.7, cy + s * 1.05, cx + s * 0.1, cy + s * 0.9);
     ctx.stroke();
 
-    // Ponta do microfone
     ctx.beginPath();
     ctx.arc(cx + s * 0.05, cy + s * 0.9, s * 0.14, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // QRCode.js gera um <canvas> ou, em alguns navegadores/versões, troca para <img>.
-  // Para garantir que o ícone apareça em qualquer caso, o QR é redesenhado num canvas
-  // próprio (via drawImage) e o ícone é pintado por cima dele.
-  function aplicarSeloNoQR(container, tamanho) {
-    const origem = container.querySelector('canvas') || container.querySelector('img');
-    if (!origem) return;
+  // Desenha o QR no estilo "pontilhado" (dots + olhos arredondados + selo central),
+  // no tom azul da Eletrofrio.
+  function desenharQREstilizado(container, texto, tamanhoCanvas) {
+    const matriz = obterMatrizQR(texto);
+    const n = matriz.length;
 
-    const finalizar = () => {
-      const canvasFinal = document.createElement('canvas');
-      canvasFinal.width = tamanho;
-      canvasFinal.height = tamanho;
-      const ctx = canvasFinal.getContext('2d');
-      ctx.drawImage(origem, 0, 0, tamanho, tamanho);
-      desenharIconeCentral(ctx, tamanho / 2, tamanho / 2, tamanho * 0.105);
-      container.innerHTML = '';
-      container.appendChild(canvasFinal);
-    };
+    const canvas = document.createElement('canvas');
+    canvas.width = tamanhoCanvas;
+    canvas.height = tamanhoCanvas;
+    const ctx = canvas.getContext('2d');
 
-    if (origem.tagName === 'IMG' && !origem.complete) {
-      origem.onload = finalizar;
-    } else {
-      finalizar();
+    const zonaSilencio = 1.5; // margem em módulos
+    const cell = tamanhoCanvas / (n + zonaSilencio * 2);
+    const offset = zonaSilencio * cell;
+
+    // Fundo branco
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, tamanhoCanvas, tamanhoCanvas);
+
+    // Gradiente azul Eletrofrio (mesma ideia do exemplo, em tom de marca)
+    const gradiente = ctx.createLinearGradient(0, 0, tamanhoCanvas, tamanhoCanvas);
+    gradiente.addColorStop(0, '#18ade8');
+    gradiente.addColorStop(0.55, '#1090c4');
+    gradiente.addColorStop(1, '#0b3f66');
+
+    const ehOlho = (r, c) =>
+      (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+
+    // Pontos (módulos de dado, fora das áreas dos 3 "olhos")
+    ctx.fillStyle = gradiente;
+    const raioPonto = cell * 0.4;
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (ehOlho(r, c)) continue;
+        if (!matriz[r][c]) continue;
+        const cx = offset + c * cell + cell / 2;
+        const cy = offset + r * cell + cell / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, raioPonto, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
+
+    // Olhos (posições de detecção) com estilo arredondado
+    const posicoesOlhos = [[0, 0], [0, n - 7], [n - 7, 0]];
+    posicoesOlhos.forEach(([r0, c0]) => {
+      const ex = offset + c0 * cell;
+      const ey = offset + r0 * cell;
+      const tamOlho = cell * 7;
+      const borda = cell * 1.05;
+      const raioCanto = cell * 2;
+
+      ctx.lineWidth = borda;
+      ctx.strokeStyle = gradiente;
+      caminhoRetArredondado(ctx, ex + borda / 2, ey + borda / 2, tamOlho - borda, tamOlho - borda, raioCanto);
+      ctx.stroke();
+
+      const tamMiolo = cell * 3;
+      ctx.fillStyle = gradiente;
+      caminhoRetArredondado(ctx, ex + cell * 2, ey + cell * 2, tamMiolo, tamMiolo, cell * 0.9);
+      ctx.fill();
+    });
+
+    // Selo de atendimento no centro
+    const tamanhoSelo = tamanhoCanvas * 0.24;
+    desenharSeloAtendimento(ctx, tamanhoCanvas / 2, tamanhoCanvas / 2, tamanhoSelo, '#1090c4');
+
+    container.innerHTML = '';
+    container.appendChild(canvas);
   }
 
   function gerarQR() {
@@ -393,18 +485,22 @@
     const container = document.getElementById('qr-container');
     container.innerHTML = '';
 
-    const TAMANHO_QR = 220;
+    const TAMANHO_QR = 240;
 
-    new QRCode(container, {
-      text:         urlAtual,
-      width:        TAMANHO_QR,
-      height:       TAMANHO_QR,
-      colorDark:    '#0f1117',
-      colorLight:   '#ffffff',
-      correctLevel: QRCode.CorrectLevel.H,
-    });
-
-    setTimeout(() => aplicarSeloNoQR(container, TAMANHO_QR), 50);
+    try {
+      desenharQREstilizado(container, urlAtual, TAMANHO_QR);
+    } catch (e) {
+      // Fallback de segurança: QR padrão caso a extração da matriz falhe
+      console.error('Falha ao estilizar o QR, usando modelo padrão:', e);
+      new QRCode(container, {
+        text: urlAtual,
+        width: TAMANHO_QR,
+        height: TAMANHO_QR,
+        colorDark: '#0f1117',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+    }
 
     document.getElementById('result').classList.add('visible');
     document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -432,6 +528,23 @@
   }
 
   atualizarPreview();
+
+  // Ajusta o tamanho da página de impressão para o tamanho real da etiqueta,
+  // assim o resultado impresso é só a etiqueta (com a moldura), sem sobra de folha A4.
+  function ajustarPaginaImpressao() {
+    const etiqueta = document.getElementById('etiqueta');
+    const estiloPagina = document.getElementById('tamanho-pagina-impressao');
+    if (!etiqueta || !estiloPagina) return;
+
+    const rect = etiqueta.getBoundingClientRect();
+    const pxParaMm = 25.4 / 96;
+    const largura = Math.ceil(rect.width * pxParaMm);
+    const altura  = Math.ceil(rect.height * pxParaMm);
+
+    estiloPagina.textContent = `@page { size: ${largura}mm ${altura}mm; margin: 0; }`;
+  }
+
+  window.addEventListener('beforeprint', ajustarPaginaImpressao);
 </script>
 </body>
 </html>
