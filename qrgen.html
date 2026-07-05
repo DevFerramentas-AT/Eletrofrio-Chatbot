@@ -308,17 +308,15 @@
     btn.disabled = !(pedido || nome);
   }
 
-  // Desenha o "selo" de atendimento (fone de ouvido) no centro do QR.
-  // Usa apenas arc/ellipse/quadraticCurveTo (sem roundRect) para compatibilidade ampla.
-  function desenharIconeCentral(ctx, cx, cy, raioBase) {
-    const r = raioBase;
-
-    // Fundo branco para "furar" o QR no centro
+  // Desenha o selo de atendimento (fone de ouvido) no centro do QR — versão
+  // discreta: menor e sem cor chapada forte, pra combinar com o QR em vez de destoar.
+  function desenharIconeCentral(ctx, cx, cy, r) {
+    // Fundo branco só o suficiente para abrir espaço no meio do QR
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.lineWidth = Math.max(2, r * 0.09);
+    ctx.lineWidth = Math.max(1.2, r * 0.06);
     ctx.strokeStyle = '#18ade8';
     ctx.stroke();
 
@@ -330,23 +328,23 @@
     const s = r * 0.6;
 
     // Arco do headset
-    ctx.lineWidth = s * 0.3;
+    ctx.lineWidth = s * 0.28;
     ctx.beginPath();
     ctx.arc(cx, cy - s * 0.1, s * 0.95, Math.PI * 1.08, Math.PI * 1.92);
     ctx.stroke();
 
     // Fone esquerdo
     ctx.beginPath();
-    ctx.ellipse(cx - s * 0.95, cy + s * 0.35, s * 0.28, s * 0.42, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - s * 0.95, cy + s * 0.35, s * 0.26, s * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Fone direito
     ctx.beginPath();
-    ctx.ellipse(cx + s * 0.95, cy + s * 0.35, s * 0.28, s * 0.42, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + s * 0.95, cy + s * 0.35, s * 0.26, s * 0.4, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Haste do microfone
-    ctx.lineWidth = s * 0.16;
+    ctx.lineWidth = s * 0.15;
     ctx.beginPath();
     ctx.moveTo(cx + s * 0.95, cy + s * 0.6);
     ctx.quadraticCurveTo(cx + s * 0.7, cy + s * 1.05, cx + s * 0.1, cy + s * 0.9);
@@ -354,7 +352,7 @@
 
     // Ponta do microfone
     ctx.beginPath();
-    ctx.arc(cx + s * 0.05, cy + s * 0.9, s * 0.15, 0, Math.PI * 2);
+    ctx.arc(cx + s * 0.05, cy + s * 0.9, s * 0.14, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -371,7 +369,7 @@
       canvasFinal.height = tamanho;
       const ctx = canvasFinal.getContext('2d');
       ctx.drawImage(origem, 0, 0, tamanho, tamanho);
-      desenharIconeCentral(ctx, tamanho / 2, tamanho / 2, tamanho * 0.17);
+      desenharIconeCentral(ctx, tamanho / 2, tamanho / 2, tamanho * 0.105);
       container.innerHTML = '';
       container.appendChild(canvasFinal);
     };
