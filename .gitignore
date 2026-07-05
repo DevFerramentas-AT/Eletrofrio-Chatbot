@@ -1,0 +1,20 @@
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Pastas
+node_modules/
+venv/
+.venv/
+.vscode/
+__pycache__/
+
+# Arquivos de log
+*.log
+
+# Arquivos sensíveis
+.env
+
+# Arquivos compilados
+*.exe
+*.apk

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de QR Code — Eletrofrio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #18ade8;
+    --primary-dark: #1090c4;
+    --bg: #0f1117;
+    --bg2: #181c27;
+    --bg3: #1e2333;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f2f5;
+    --text2: #8b93a8;
+    --radius: 12px;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 40px 20px 60px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 40px;
+    width: 100%;
+    max-width: 560px;
+  }
+  .logo {
+    width: 42px; height: 42px;
+    background: var(--primary);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .header-text h1 {
+    font-size: 18px; font-weight: 600; color: var(--text);
+  }
+  .header-text p {
+    font-size: 13px; color: var(--text2); margin-top: 2px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  /* Form */
+  .field { margin-bottom: 18px; }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+  input[type="text"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: var(--font);
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type="text"]:focus { border-color: var(--primary); }
+  input[type="text"]::placeholder { color: var(--text2); }
+
+  .url-preview {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: monospace;
+    word-break: break-all;
+    min-height: 38px;
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .url-preview span { color: var(--primary); }
+
+  .btn-gerar {
+    width: 100%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background .15s, opacity .15s;
+  }
+  .btn-gerar:hover { background: var(--primary-dark); }
+  .btn-gerar:disabled { opacity: .5; cursor: default; }
+
+  /* Result wrapper (dark UI around the printable label) */
+  .result {
+    display: none;
+    margin-top: 28px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    width: 100%;
+    max-width: 560px;
+    text-align: center;
+  }
+  .result.visible { display: block; }
+
+  /* Etiqueta (printable label) */
+  .etiqueta {
+    background: #ffffff;
+    color: #0f1117;
+    border-radius: 14px;
+    padding: 26px 22px 22px;
+    width: 280px;
+    margin: 0 auto;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+  }
+  .etiqueta-titulo {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    color: var(--primary-dark);
+    margin-bottom: 4px;
+  }
+  .etiqueta-sep {
+    width: 40px;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 2px;
+    margin: 8px auto 16px;
+  }
+  .etiqueta-nome {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f1117;
+    margin-bottom: 2px;
+  }
+  .etiqueta-pedido {
+    font-size: 12px;
+    color: var(--primary-dark);
+    font-family: monospace;
+    margin-bottom: 16px;
+  }
+
+  #qr-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  #qr-container canvas, #qr-container img {
+    display: block;
+    border-radius: 8px;
+  }
+
+  .etiqueta-marca {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: #0f1117;
+    margin-top: 4px;
+  }
+  .etiqueta-marca span { color: var(--primary-dark); }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
+
+  .btn-sec {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    font-family: var(--font);
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .btn-sec:hover { border-color: var(--primary); color: var(--primary); }
+
+  .btn-print {
+    background: var(--primary);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-print:hover { background: var(--primary-dark); }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; padding: 0; justify-content: center; }
+    .header, .card, .btn-row { display: none !important; }
+    .result { display: block !important; border: none; background: #fff; padding: 0; }
+    .etiqueta { box-shadow: none; width: 8cm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">❄️</div>
+  <div class="header-text">
+    <h1>Gerador de QR Code</h1>
+    <p>Eletrofrio — Atendimento ao cliente</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="field">
+    <label>Número do pedido</label>
+    <input type="text" id="pedido" placeholder="Ex: 11805424" oninput="atualizarPreview()">
+  </div>
+  <div class="field">
+    <label>Nome da loja / cliente</label>
+    <input type="text" id="nome" placeholder="Ex: Supermercado Silva" oninput="atualizarPreview()">
+  </div>
+  <div class="field">
+    <label>URL que será gerada</label>
+    <div class="url-preview" id="url-preview">Preencha os campos acima...</div>
+  </div>
+  <button class="btn-gerar" id="btn-gerar" onclick="gerarQR()" disabled>Gerar QR Code</button>
+</div>
+
+<div class="result" id="result">
+  <div class="etiqueta" id="etiqueta">
+    <div class="etiqueta-titulo">Assistência técnica</div>
+    <div class="etiqueta-sep"></div>
+    <div class="etiqueta-nome" id="res-nome"></div>
+    <div class="etiqueta-pedido" id="res-pedido"></div>
+    <div id="qr-container"></div>
+    <div class="etiqueta-marca">ELETRO<span>FRIO</span></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn-sec" onclick="copiarURL()">📋 Copiar URL</button>
+    <button class="btn-sec" onclick="novoQR()">↩ Novo QR</button>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+  </div>
+</div>
+
+<script>
+  // URL fixa do chatbot — altere aqui se o domínio mudar
+  const BASE_URL = 'https://eletrofrio.pages.dev/interface.html';
+
+  let urlAtual = '';
+
+  function atualizarPreview() {
+    const pedido = document.getElementById('pedido').value.trim();
+    const nome   = document.getElementById('nome').value.trim();
+    const btn    = document.getElementById('btn-gerar');
+    const preview = document.getElementById('url-preview');
+
+    if (!pedido && !nome) {
+      preview.innerHTML = 'Preencha os campos acima...';
+      btn.disabled = true;
+      urlAtual = '';
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (pedido) params.set('pedido', pedido);
+    if (nome)   params.set('nome', nome);
+
+    urlAtual = BASE_URL + (BASE_URL.includes('?') ? '&' : '?') + params.toString();
+
+    const [urlBase, urlQuery] = urlAtual.split('?');
+    preview.innerHTML = urlBase + '?<span>' + urlQuery + '</span>';
+
+    btn.disabled = !(pedido || nome);
+  }
+
+  function desenharIconeCentral(canvas) {
+    const ctx = canvas.getContext('2d');
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const r  = canvas.width * 0.16;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#18ade8';
+    ctx.lineWidth = Math.max(2, canvas.width * 0.01);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#18ade8';
+    ctx.fillStyle = '#18ade8';
+    ctx.lineWidth = Math.max(2.2, canvas.width * 0.014);
+    ctx.lineCap = 'round';
+
+    const headR = r * 0.55;
+
+    // Arco do headset
+    ctx.beginPath();
+    ctx.arc(cx, cy - headR * 0.15, headR, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.stroke();
+
+    // Fone esquerdo
+    ctx.beginPath();
+    ctx.roundRect(cx - headR - headR * 0.22, cy - headR * 0.15, headR * 0.4, headR * 0.85, headR * 0.18);
+    ctx.fill();
+
+    // Fone direito
+    ctx.beginPath();
+    ctx.roundRect(cx + headR - headR * 0.18, cy - headR * 0.15, headR * 0.4, headR * 0.85, headR * 0.18);
+    ctx.fill();
+
+    // Microfone
+    ctx.beginPath();
+    ctx.moveTo(cx + headR - headR * 0.02, cy + headR * 0.55);
+    ctx.quadraticCurveTo(cx + headR * 0.15, cy + headR * 0.95, cx - headR * 0.15, cy + headR * 0.8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx - headR * 0.15, cy + headR * 0.8, headR * 0.12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function gerarQR() {
+    if (!urlAtual) return;
+
+    const pedido = document.getElementById('pedido').value.trim();
+    const nome   = document.getElementById('nome').value.trim();
+
+    document.getElementById('res-nome').textContent   = nome   || '—';
+    document.getElementById('res-pedido').textContent = pedido ? ('Pedido: ' + pedido) : '';
+
+    const container = document.getElementById('qr-container');
+    container.innerHTML = '';
+
+    new QRCode(container, {
+      text:         urlAtual,
+      width:        220,
+      height:       220,
+      colorDark:    '#0f1117',
+      colorLight:   '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+
+    setTimeout(() => {
+      const canvas = container.querySelector('canvas');
+      if (canvas) desenharIconeCentral(canvas);
+    }, 30);
+
+    document.getElementById('result').classList.add('visible');
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function copiarURL() {
+    if (!urlAtual) return;
+    navigator.clipboard.writeText(urlAtual).then(() => {
+      const btn = document.querySelector('.btn-sec');
+      const original = btn.textContent;
+      btn.textContent = '✓ Copiado!';
+      setTimeout(() => btn.textContent = original, 2000);
+    });
+  }
+
+  function novoQR() {
+    document.getElementById('pedido').value = '';
+    document.getElementById('nome').value   = '';
+    document.getElementById('result').classList.remove('visible');
+    document.getElementById('url-preview').innerHTML = 'Preencha os campos acima...';
+    document.getElementById('btn-gerar').disabled = true;
+    document.getElementById('qr-container').innerHTML = '';
+    urlAtual = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  atualizarPreview();
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "Eletrofrio Chat",
+  "short_name": "Eletrofrio",
+  "description": "Assistente de atendimento Eletrofrio",
+  "start_url": "/interface.html",
+  "display": "standalone",
+  "background_color": "#0d0d10",
+  "theme_color": "#0d0d10",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/DevFerramentas-AT/Eletrofrio-Chatbot/master/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
