@@ -155,14 +155,7 @@
     letter-spacing: .03em;
     text-transform: uppercase;
     color: var(--primary-dark);
-    margin-bottom: 4px;
-  }
-  .etiqueta-sep {
-    width: 40px;
-    height: 3px;
-    background: var(--primary);
-    border-radius: 2px;
-    margin: 8px auto 16px;
+    margin-bottom: 18px;
   }
   .etiqueta-nome {
     font-size: 15px;
@@ -172,7 +165,7 @@
   }
   .etiqueta-pedido {
     font-size: 12px;
-    color: var(--primary-dark);
+    color: #5a6272;
     font-family: monospace;
     margin-bottom: 16px;
   }
@@ -196,7 +189,7 @@
     color: #0f1117;
     margin-top: 4px;
   }
-  .etiqueta-marca span { color: var(--primary-dark); }
+  .etiqueta-marca span { color: #0f1117; }
 
   .btn-row {
     display: flex;
@@ -272,7 +265,6 @@
 <div class="result" id="result">
   <div class="etiqueta" id="etiqueta">
     <div class="etiqueta-titulo">Assistência técnica</div>
-    <div class="etiqueta-sep"></div>
     <div class="etiqueta-nome" id="res-nome"></div>
     <div class="etiqueta-pedido" id="res-pedido"></div>
     <div id="qr-container"></div>
@@ -316,50 +308,79 @@
     btn.disabled = !(pedido || nome);
   }
 
-  function desenharIconeCentral(canvas) {
-    const ctx = canvas.getContext('2d');
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const r  = canvas.width * 0.16;
+  // Desenha o "selo" de atendimento (fone de ouvido) no centro do QR.
+  // Usa apenas arc/ellipse/quadraticCurveTo (sem roundRect) para compatibilidade ampla.
+  function desenharIconeCentral(ctx, cx, cy, raioBase) {
+    const r = raioBase;
 
+    // Fundo branco para "furar" o QR no centro
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
+    ctx.lineWidth = Math.max(2, r * 0.09);
     ctx.strokeStyle = '#18ade8';
-    ctx.lineWidth = Math.max(2, canvas.width * 0.01);
     ctx.stroke();
 
-    ctx.strokeStyle = '#18ade8';
     ctx.fillStyle = '#18ade8';
-    ctx.lineWidth = Math.max(2.2, canvas.width * 0.014);
+    ctx.strokeStyle = '#18ade8';
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    const headR = r * 0.55;
+    const s = r * 0.6;
 
     // Arco do headset
+    ctx.lineWidth = s * 0.3;
     ctx.beginPath();
-    ctx.arc(cx, cy - headR * 0.15, headR, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.arc(cx, cy - s * 0.1, s * 0.95, Math.PI * 1.08, Math.PI * 1.92);
     ctx.stroke();
 
     // Fone esquerdo
     ctx.beginPath();
-    ctx.roundRect(cx - headR - headR * 0.22, cy - headR * 0.15, headR * 0.4, headR * 0.85, headR * 0.18);
+    ctx.ellipse(cx - s * 0.95, cy + s * 0.35, s * 0.28, s * 0.42, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Fone direito
     ctx.beginPath();
-    ctx.roundRect(cx + headR - headR * 0.18, cy - headR * 0.15, headR * 0.4, headR * 0.85, headR * 0.18);
+    ctx.ellipse(cx + s * 0.95, cy + s * 0.35, s * 0.28, s * 0.42, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Microfone
+    // Haste do microfone
+    ctx.lineWidth = s * 0.16;
     ctx.beginPath();
-    ctx.moveTo(cx + headR - headR * 0.02, cy + headR * 0.55);
-    ctx.quadraticCurveTo(cx + headR * 0.15, cy + headR * 0.95, cx - headR * 0.15, cy + headR * 0.8);
+    ctx.moveTo(cx + s * 0.95, cy + s * 0.6);
+    ctx.quadraticCurveTo(cx + s * 0.7, cy + s * 1.05, cx + s * 0.1, cy + s * 0.9);
     ctx.stroke();
+
+    // Ponta do microfone
     ctx.beginPath();
-    ctx.arc(cx - headR * 0.15, cy + headR * 0.8, headR * 0.12, 0, Math.PI * 2);
+    ctx.arc(cx + s * 0.05, cy + s * 0.9, s * 0.15, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // QRCode.js gera um <canvas> ou, em alguns navegadores/versões, troca para <img>.
+  // Para garantir que o ícone apareça em qualquer caso, o QR é redesenhado num canvas
+  // próprio (via drawImage) e o ícone é pintado por cima dele.
+  function aplicarSeloNoQR(container, tamanho) {
+    const origem = container.querySelector('canvas') || container.querySelector('img');
+    if (!origem) return;
+
+    const finalizar = () => {
+      const canvasFinal = document.createElement('canvas');
+      canvasFinal.width = tamanho;
+      canvasFinal.height = tamanho;
+      const ctx = canvasFinal.getContext('2d');
+      ctx.drawImage(origem, 0, 0, tamanho, tamanho);
+      desenharIconeCentral(ctx, tamanho / 2, tamanho / 2, tamanho * 0.17);
+      container.innerHTML = '';
+      container.appendChild(canvasFinal);
+    };
+
+    if (origem.tagName === 'IMG' && !origem.complete) {
+      origem.onload = finalizar;
+    } else {
+      finalizar();
+    }
   }
 
   function gerarQR() {
@@ -374,19 +395,18 @@
     const container = document.getElementById('qr-container');
     container.innerHTML = '';
 
+    const TAMANHO_QR = 220;
+
     new QRCode(container, {
       text:         urlAtual,
-      width:        220,
-      height:       220,
+      width:        TAMANHO_QR,
+      height:       TAMANHO_QR,
       colorDark:    '#0f1117',
       colorLight:   '#ffffff',
       correctLevel: QRCode.CorrectLevel.H,
     });
 
-    setTimeout(() => {
-      const canvas = container.querySelector('canvas');
-      if (canvas) desenharIconeCentral(canvas);
-    }, 30);
+    setTimeout(() => aplicarSeloNoQR(container, TAMANHO_QR), 50);
 
     document.getElementById('result').classList.add('visible');
     document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
