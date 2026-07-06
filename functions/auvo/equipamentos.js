@@ -9,10 +9,14 @@
 //   AUVO_API_KEY
 //   AUVO_API_TOKEN
 //
-// Opcional: se você criar um KV namespace e vincular como `AUVO_KV`,
-// o token de login passa a ser reaproveitado entre chamadas (ver comentário
-// na função obterToken). Sem o KV, a function simplesmente faz login a cada
-// requisição — funciona normalmente, só gasta uma chamada extra à Auvo.
+// FORTEMENTE RECOMENDADO: crie um KV namespace e vincule como `AUVO_KV`
+// (Settings > Functions > KV namespace bindings). Sem isso, CADA consulta do
+// chatbot varre a lista inteira de clientes e de equipamentos da Auvo do zero
+// — o que pode levar minutos se a conta tiver muitos cadastros, e no plano
+// Free do Workers ainda esbarra no limite de 50 subrequests por invocação.
+// Com o KV configurado, a primeira consulta "esquenta" o cache (listas de
+// clientes e equipamentos, TTL de 5 min) e as consultas seguintes nesse
+// período ficam praticamente instantâneas, sem nenhuma chamada à Auvo.
 
 const BASE_URL = "https://api.auvo.com.br/v2";
 
@@ -95,36 +99,52 @@ async function obterToken(env) {
   return token;
 }
 
-async function buscarClientePaginado(token, externalId) {
+const CACHE_TTL_SECONDS = 300; // 5 minutos — ajuste conforme a frequência de cadastro na Auvo
+
+async function buscarTodosClientes(token, env) {
+  if (env.AUVO_KV) {
+    const cached = await env.AUVO_KV.get("auvo_customers_v1", { type: "json" });
+    if (cached) return cached;
+  }
+
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   let pagina = 1;
-  const pageSize = 10;
+  const pageSize = 100;
+  const todos = [];
 
   while (true) {
     const url = `${BASE_URL}/customers/?${new URLSearchParams({ page: pagina, pageSize })}`;
     const resp = await fetch(url, { headers });
-    if (!resp.ok) return null;
+    if (!resp.ok) break;
 
     const clientes = extrairLista(await resp.json());
-    if (!clientes.length) return null;
+    if (!clientes.length) break;
 
-    const encontrado = clientes.find(
-      (c) => String(c.externalId ?? "").trim() === externalId.trim()
-    );
-    if (encontrado) return encontrado;
+    todos.push(...clientes);
 
-    if (clientes.length < pageSize) return null;
-
+    if (clientes.length < pageSize) break;
     pagina += 1;
-    await new Promise((r) => setTimeout(r, 500));
   }
+
+  if (env.AUVO_KV) {
+    await env.AUVO_KV.put("auvo_customers_v1", JSON.stringify(todos), {
+      expirationTtl: CACHE_TTL_SECONDS,
+    });
+  }
+
+  return todos;
 }
 
-async function buscarEquipamentosPorCliente(token, customerId) {
+async function buscarTodosEquipamentos(token, env) {
+  if (env.AUVO_KV) {
+    const cached = await env.AUVO_KV.get("auvo_equipments_v1", { type: "json" });
+    if (cached) return cached;
+  }
+
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   let pagina = 1;
-  const pageSize = 50;
-  const encontrados = [];
+  const pageSize = 100;
+  const todos = [];
 
   while (true) {
     const url = `${BASE_URL}/equipments/?${new URLSearchParams({ page: pagina, pageSize })}`;
@@ -139,17 +159,33 @@ async function buscarEquipamentosPorCliente(token, customerId) {
     const equipamentos = extrairLista(await resp.json());
     if (!equipamentos.length) break;
 
-    for (const equip of equipamentos) {
-      if (String(equip.associatedCustomerId ?? "").trim() === String(customerId)) {
-        encontrados.push(equip);
-      }
-    }
+    todos.push(...equipamentos);
 
     if (equipamentos.length < pageSize) break;
     pagina += 1;
   }
 
-  return encontrados;
+  if (env.AUVO_KV) {
+    await env.AUVO_KV.put("auvo_equipments_v1", JSON.stringify(todos), {
+      expirationTtl: CACHE_TTL_SECONDS,
+    });
+  }
+
+  return todos;
+}
+
+async function buscarClientePaginado(token, externalId, env) {
+  const clientes = await buscarTodosClientes(token, env);
+  return (
+    clientes.find((c) => String(c.externalId ?? "").trim() === externalId.trim()) || null
+  );
+}
+
+async function buscarEquipamentosPorCliente(token, customerId, env) {
+  const todos = await buscarTodosEquipamentos(token, env);
+  return todos.filter(
+    (equip) => String(equip.associatedCustomerId ?? "").trim() === String(customerId)
+  );
 }
 
 function selecionarEquipamentoPorDescricao(equipamentosNormalizados, descricaoAlvo) {
@@ -187,7 +223,7 @@ export async function onRequestPost({ request, env }) {
 
   let cliente;
   try {
-    cliente = await buscarClientePaginado(token, externalId);
+    cliente = await buscarClientePaginado(token, externalId, env);
   } catch (e) {
     return jsonResponse({ ok: false, erro: `Erro ao buscar cliente: ${e.message}` }, 502);
   }
@@ -203,7 +239,7 @@ export async function onRequestPost({ request, env }) {
 
   let equipamentosRaw;
   try {
-    equipamentosRaw = await buscarEquipamentosPorCliente(token, customerId);
+    equipamentosRaw = await buscarEquipamentosPorCliente(token, customerId, env);
   } catch (e) {
     return jsonResponse({ ok: false, erro: `Erro ao buscar equipamentos: ${e.message}` }, 502);
   }
