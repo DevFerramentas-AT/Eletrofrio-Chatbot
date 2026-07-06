@@ -16,7 +16,7 @@
 // Free do Workers ainda esbarra no limite de 50 subrequests por invocação.
 // Com o KV configurado, a primeira consulta "esquenta" o cache (listas de
 // clientes e equipamentos, TTL de 5 min) e as consultas seguintes nesse
-// período ficam praticamente instantâneas, sem nenhuma chamada à Auvo.
+// período ficam praticamente instantâneas, sem nenhuma chamada à Auv.
 
 const BASE_URL = "https://api.auvo.com.br/v2";
 
