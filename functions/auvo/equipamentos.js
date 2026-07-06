@@ -101,6 +101,8 @@ async function obterToken(env) {
 
 const CACHE_TTL_SECONDS = 300; // 5 minutos — ajuste conforme a frequência de cadastro na Auvo
 
+const MAX_PAGINAS = 20; // trava de segurança: evita estourar o limite de subrequests do Worker
+
 async function buscarTodosClientes(token, env) {
   if (env.AUVO_KV) {
     const cached = await env.AUVO_KV.get("auvo_customers_v1", { type: "json" });
@@ -112,10 +114,19 @@ async function buscarTodosClientes(token, env) {
   const pageSize = 100;
   const todos = [];
 
-  while (true) {
+  while (pagina <= MAX_PAGINAS) {
     const url = `${BASE_URL}/customers/?${new URLSearchParams({ page: pagina, pageSize })}`;
-    const resp = await fetch(url, { headers });
-    if (!resp.ok) break;
+    let resp;
+    try {
+      resp = await fetch(url, { headers });
+    } catch (e) {
+      console.error(`[auvo] Falha de rede na página ${pagina} de customers: ${e.message}`);
+      break;
+    }
+    if (!resp.ok) {
+      console.error(`[auvo] HTTP ${resp.status} na página ${pagina} de customers`);
+      break;
+    }
 
     const clientes = extrairLista(await resp.json());
     if (!clientes.length) break;
@@ -124,6 +135,10 @@ async function buscarTodosClientes(token, env) {
 
     if (clientes.length < pageSize) break;
     pagina += 1;
+  }
+
+  if (pagina > MAX_PAGINAS) {
+    console.error(`[auvo] Atingiu MAX_PAGINAS (${MAX_PAGINAS}) buscando customers — lista pode estar incompleta.`);
   }
 
   if (env.AUVO_KV) {
@@ -146,15 +161,19 @@ async function buscarTodosEquipamentos(token, env) {
   const pageSize = 100;
   const todos = [];
 
-  while (true) {
+  while (pagina <= MAX_PAGINAS) {
     const url = `${BASE_URL}/equipments/?${new URLSearchParams({ page: pagina, pageSize })}`;
     let resp;
     try {
       resp = await fetch(url, { headers });
-    } catch {
+    } catch (e) {
+      console.error(`[auvo] Falha de rede na página ${pagina} de equipments: ${e.message}`);
       break;
     }
-    if (!resp.ok) break;
+    if (!resp.ok) {
+      console.error(`[auvo] HTTP ${resp.status} na página ${pagina} de equipments`);
+      break;
+    }
 
     const equipamentos = extrairLista(await resp.json());
     if (!equipamentos.length) break;
@@ -163,6 +182,10 @@ async function buscarTodosEquipamentos(token, env) {
 
     if (equipamentos.length < pageSize) break;
     pagina += 1;
+  }
+
+  if (pagina > MAX_PAGINAS) {
+    console.error(`[auvo] Atingiu MAX_PAGINAS (${MAX_PAGINAS}) buscando equipments — lista pode estar incompleta.`);
   }
 
   if (env.AUVO_KV) {
