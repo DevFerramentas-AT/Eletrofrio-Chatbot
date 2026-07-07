@@ -37,9 +37,13 @@
   --font:          'Plus Jakarta Sans', system-ui, sans-serif;
 }
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
 html {
   height: 100%;
   height: -webkit-fill-available;
+  overscroll-behavior: none;
 }
 body {
   height: 100%; width: 100%;
@@ -51,6 +55,7 @@ body {
   /* Evita bounce scroll no iOS */
   position: fixed;
   inset: 0;
+  overscroll-behavior: none;
 }
 
 /* ── Config overlay ── */
@@ -90,7 +95,7 @@ body {
   width: 100%; background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--text); font-size: 13.5px;
+  color: var(--text); font-size: 16px;
   padding: 10px 14px; outline: none;
   font-family: var(--font); transition: border-color .15s;
 }
@@ -235,6 +240,8 @@ body {
   padding: 24px 20px;
   display: flex; flex-direction: column; gap: 6px;
   scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 #messages::-webkit-scrollbar { width: 4px; }
 #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -270,7 +277,6 @@ body {
 
 .bubble {
   max-width: min(72%, 520px);
-  width: fit-content;
   padding: 10px 14px;
   border-radius: 18px;
   font-size: 14px; line-height: 1.6;
@@ -397,17 +403,18 @@ body {
 .input-row:focus-within { border-color: var(--primary); }
 #chat-input {
   flex: 1; background: none; border: none; outline: none;
-  color: var(--text); font-size: 14px; font-family: var(--font);
+  color: var(--text); font-size: 16px; font-family: var(--font);
   padding: 6px 0;
 }
 #chat-input::placeholder { color: var(--text3); }
 #chat-input:disabled { opacity: .4; }
 #send-btn {
-  width: 40px; height: 40px; border-radius: 50%;
+  width: 44px; height: 44px; border-radius: 50%;
   background: var(--primary); border: none; color: #fff;
   font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background .15s, transform .1s; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 #send-btn:hover { background: var(--primary-dark); }
 #send-btn:active { transform: scale(.9); }
@@ -503,8 +510,9 @@ body {
   <div id="input-area">
     <div class="input-row">
       <input id="chat-input" placeholder="Digite sua mensagem…" disabled
+        aria-label="Mensagem"
         onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendInput(); }">
-      <button id="send-btn" onclick="sendInput()" disabled>↑</button>
+      <button id="send-btn" onclick="sendInput()" disabled aria-label="Enviar mensagem">↑</button>
     </div>
   </div>
 </div>
