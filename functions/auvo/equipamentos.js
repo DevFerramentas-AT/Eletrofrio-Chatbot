@@ -231,7 +231,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const externalId = (body.externalId || "").trim();
-  const descricaoFiltro = (body.descricaoFiltro || "CONTROLE").trim();
+  const descricaoFiltro = (body.descricaoFiltro || "teste").trim();
 
   if (!externalId) {
     return jsonResponse({ ok: false, erro: "Campo 'externalId' é obrigatório." }, 400);
