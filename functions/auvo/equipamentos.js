@@ -37,6 +37,27 @@ export async function onRequestOptions() {
   return new Response(null, { headers: CORS_HEADERS });
 }
 
+// ── Fetch com timeout ────────────────────────────────────────────────────
+// fetch() nativo não tem timeout embutido. Sem isso, se uma página da Auvo
+// travar (sem responder e sem fechar a conexão), o Worker fica esperando
+// para sempre e o chatbot nunca recebe resposta (nem sucesso, nem erro).
+const FETCH_TIMEOUT_MS = 15000;
+
+async function fetchComTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (e.name === "AbortError") {
+      throw new Error(`Timeout (${timeoutMs}ms) ao chamar ${url}`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function formatarDataBR(dataIso) {
@@ -67,7 +88,7 @@ async function obterToken(env) {
     }
   }
 
-  const resp = await fetch(`${BASE_URL}/login`, {
+  const resp = await fetchComTimeout(`${BASE_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ apiKey: env.AUVO_API_KEY, apiToken: env.AUVO_API_TOKEN }),
@@ -103,53 +124,6 @@ const CACHE_TTL_SECONDS = 300; // 5 minutos — ajuste conforme a frequência de
 
 const MAX_PAGINAS = 20; // trava de segurança: evita estourar o limite de subrequests do Worker
 
-async function buscarTodosClientes(token, env) {
-  if (env.AUVO_KV) {
-    const cached = await env.AUVO_KV.get("auvo_customers_v1", { type: "json" });
-    if (cached) return cached;
-  }
-
-  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-  let pagina = 1;
-  const pageSize = 100;
-  const todos = [];
-
-  while (pagina <= MAX_PAGINAS) {
-    const url = `${BASE_URL}/customers/?${new URLSearchParams({ page: pagina, pageSize })}`;
-    let resp;
-    try {
-      resp = await fetch(url, { headers });
-    } catch (e) {
-      console.error(`[auvo] Falha de rede na página ${pagina} de customers: ${e.message}`);
-      break;
-    }
-    if (!resp.ok) {
-      console.error(`[auvo] HTTP ${resp.status} na página ${pagina} de customers`);
-      break;
-    }
-
-    const clientes = extrairLista(await resp.json());
-    if (!clientes.length) break;
-
-    todos.push(...clientes);
-
-    if (clientes.length < pageSize) break;
-    pagina += 1;
-  }
-
-  if (pagina > MAX_PAGINAS) {
-    console.error(`[auvo] Atingiu MAX_PAGINAS (${MAX_PAGINAS}) buscando customers — lista pode estar incompleta.`);
-  }
-
-  if (env.AUVO_KV) {
-    await env.AUVO_KV.put("auvo_customers_v1", JSON.stringify(todos), {
-      expirationTtl: CACHE_TTL_SECONDS,
-    });
-  }
-
-  return todos;
-}
-
 async function buscarTodosEquipamentos(token, env) {
   if (env.AUVO_KV) {
     const cached = await env.AUVO_KV.get("auvo_equipments_v1", { type: "json" });
@@ -165,7 +139,7 @@ async function buscarTodosEquipamentos(token, env) {
     const url = `${BASE_URL}/equipments/?${new URLSearchParams({ page: pagina, pageSize })}`;
     let resp;
     try {
-      resp = await fetch(url, { headers });
+      resp = await fetchComTimeout(url, { headers });
     } catch (e) {
       console.error(`[auvo] Falha de rede na página ${pagina} de equipments: ${e.message}`);
       break;
@@ -198,10 +172,52 @@ async function buscarTodosEquipamentos(token, env) {
 }
 
 async function buscarClientePaginado(token, externalId, env) {
-  const clientes = await buscarTodosClientes(token, env);
-  return (
-    clientes.find((c) => String(c.externalId ?? "").trim() === externalId.trim()) || null
-  );
+  const alvo = externalId.trim();
+
+  // Sem cache de lista completa de clientes (buscar direto é mais rápido:
+  // pára assim que encontra, em vez de baixar a base inteira antes).
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  let pagina = 1;
+  const pageSize = 50;
+
+  console.log(`[auvo] Buscando cliente externalId='${alvo}'...`);
+
+  while (pagina <= MAX_PAGINAS) {
+    const url = `${BASE_URL}/customers/?${new URLSearchParams({ page: pagina, pageSize })}`;
+    let resp;
+    try {
+      resp = await fetchComTimeout(url, { headers });
+    } catch (e) {
+      console.error(`[auvo] Falha de rede na página ${pagina} de customers: ${e.message}`);
+      return null;
+    }
+    if (!resp.ok) {
+      console.error(`[auvo] HTTP ${resp.status} na página ${pagina} de customers`);
+      return null;
+    }
+
+    const clientes = extrairLista(await resp.json());
+    if (!clientes.length) {
+      console.log("[auvo] Fim dos registros. Cliente não encontrado.");
+      return null;
+    }
+
+    const achado = clientes.find((c) => String(c.externalId ?? "").trim() === alvo);
+    if (achado) {
+      console.log(`[auvo] Cliente encontrado! id=${achado.id}`);
+      return achado;
+    }
+
+    if (clientes.length < pageSize) {
+      console.log("[auvo] Última página. Cliente não encontrado.");
+      return null;
+    }
+
+    pagina += 1;
+  }
+
+  console.error(`[auvo] Atingiu MAX_PAGINAS (${MAX_PAGINAS}) buscando customers — cliente pode não ter sido encontrado.`);
+  return null;
 }
 
 async function buscarEquipamentosPorCliente(token, customerId, env) {
