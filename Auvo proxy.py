@@ -154,7 +154,8 @@ def buscar_cliente_paginado(token, external_id):
 def selecionar_equipamento_por_descricao(equipamentos_normalizados, descricao_alvo):
     """
     Procura, na lista já normalizada, o primeiro equipamento cujo campo
-    'descricao' seja igual (case-insensitive) a descricao_alvo.
+    'descricao' (que agora reflete o campo 'name' da Auvo, ex: 'CONTROLE')
+    seja igual (case-insensitive) a descricao_alvo.
     Retorna o dict do equipamento ou None se não encontrar.
     """
     alvo = descricao_alvo.strip().lower()
@@ -224,7 +225,7 @@ def equipamentos():
     external_id = (body.get("externalId") or "").strip()
     # Descrição usada para escolher o equipamento "válido" dentre os encontrados.
     # Pode ser sobrescrita no body: { "externalId": "...", "descricaoFiltro": "teste" }
-    descricao_filtro = (body.get("descricaoFiltro") or "teste").strip()
+    descricao_filtro = (body.get("descricaoFiltro") or "CONTROLE").strip()
 
     if not external_id:
         return jsonify({"ok": False, "erro": "Campo 'externalId' é obrigatório."}), 400
@@ -259,7 +260,7 @@ def equipamentos():
     equipamentos_normalizados = [
         {
             "id":             equip.get("id"),
-            "descricao":      equip.get("description", ""),
+            "descricao":      equip.get("name", ""),  # payload real da Auvo usa 'name', não 'description'
             "vencimento":     formatar_data_br(equip.get("expirationDate", "")), # formato BR: dd/mm/aaaa
             "expirationDate": equip.get("expirationDate", ""), # mantido em ISO, igual à Auvo
             "modelo":         equip.get("model", ""),
@@ -268,9 +269,7 @@ def equipamentos():
         for equip in equipamentos_raw
     ]
 
-    # Equipamento "válido" — aquele cujo description bate com descricao_filtro
-    # (no exemplo do cliente, equipamentos com data padrão 0001-01-01 são placeholders
-    # sem data real; o equipamento com descricao == "teste" é o que tem a data real).
+    # Equipamento "válido" — aquele cujo name bate com descricao_filtro (default "CONTROLE").
     equipamento_filtrado = selecionar_equipamento_por_descricao(equipamentos_normalizados, descricao_filtro)
 
     return jsonify({

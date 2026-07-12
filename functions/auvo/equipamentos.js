@@ -2,7 +2,7 @@
 // Porta do auvo_proxy.py (Flask) para Cloudflare Pages Functions.
 //
 // Endpoint: POST /auvo/equipamentos
-// Body:     { "externalId": "PED 077-055/19", "descricaoFiltro": "CONTROLE" (opcional) }
+// Body:     { "externalId": "PED 077-055/19", "descricaoFiltro": "teste" (opcional) }
 //
 // Variáveis de ambiente necessárias (configurar no dashboard do Cloudflare Pages
 // em Settings > Environment variables):
@@ -212,6 +212,7 @@ async function buscarEquipamentosPorCliente(token, customerId, env) {
 }
 
 function selecionarEquipamentoPorDescricao(equipamentosNormalizados, descricaoAlvo) {
+  // 'descricao' aqui reflete o campo 'name' da Auvo (ex: 'CONTROLE'), não 'description'.
   const alvo = descricaoAlvo.trim().toLowerCase();
   return (
     equipamentosNormalizados.find(
@@ -269,7 +270,7 @@ export async function onRequestPost({ request, env }) {
 
   const equipamentosNormalizados = equipamentosRaw.map((equip) => ({
     id: equip.id,
-    descricao: equip.description || "",
+    descricao: equip.name || "", // payload real da Auvo usa 'name', não 'description'
     vencimento: formatarDataBR(equip.expirationDate || ""),
     expirationDate: equip.expirationDate || "",
     modelo: equip.model || "",
