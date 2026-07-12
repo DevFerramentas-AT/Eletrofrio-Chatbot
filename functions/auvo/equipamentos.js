@@ -2,7 +2,7 @@
 // Porta do auvo_proxy.py (Flask) para Cloudflare Pages Functions.
 //
 // Endpoint: POST /auvo/equipamentos
-// Body:     { "externalId": "PED 077-055/19", "descricaoFiltro": "teste" (opcional) }
+// Body:     { "externalId": "PED 077-055/19", "descricaoFiltro": "CONTROLE" (opcional) }
 //
 // Variáveis de ambiente necessárias (configurar no dashboard do Cloudflare Pages
 // em Settings > Environment variables):
@@ -231,7 +231,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const externalId = (body.externalId || "").trim();
-  const descricaoFiltro = (body.descricaoFiltro || "teste").trim();
+  const descricaoFiltro = (body.descricaoFiltro || "CONTROLE").trim();
 
   if (!externalId) {
     return jsonResponse({ ok: false, erro: "Campo 'externalId' é obrigatório." }, 400);
