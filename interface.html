@@ -973,11 +973,15 @@ async function runNode(id) {
         }
       });
       loadEl.remove();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const successNext = n.apiSuccessNext || n.next;
+      if (successNext) setTimeout(() => runNode(successNext), 300);
     } catch {
       loadEl.remove();
       addBotMsg(n.apiErrorMsg || 'Não foi possível consultar. Tente novamente.');
+      const errorNext = n.apiErrorNext || n.next;
+      if (errorNext) setTimeout(() => runNode(errorNext), 300);
     }
-    if (n.next) setTimeout(() => runNode(n.next), 300);
     return;
   }
 
