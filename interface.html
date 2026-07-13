@@ -441,6 +441,52 @@ body {
 
 /* ── Scrollbar thin ── */
 * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+
+/* ── Consultar protocolo: link + overlay ── */
+.consulta-link {
+  display: block; text-align: center; margin-top: 16px;
+  font-size: 13px; color: var(--primary); text-decoration: none; cursor: pointer;
+}
+.consulta-link:hover { text-decoration: underline; }
+
+#consulta-overlay {
+  position: fixed; inset: 0; z-index: 210;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  padding-top: calc(20px + env(safe-area-inset-top));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+#consulta-overlay.hidden { display: none; }
+
+.btn-back {
+  width: 100%; padding: 11px; margin-top: 10px;
+  background: none; border: 1px solid var(--border-hi);
+  border-radius: var(--radius-sm); color: var(--text2);
+  font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer;
+  transition: background .15s;
+}
+.btn-back:hover { background: var(--bg3); }
+
+/* ── Área de exportação (substitui o input quando em modo consulta) ── */
+#export-area {
+  padding: 14px 20px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  background: var(--bg2); border-top: 1px solid var(--border);
+}
+#export-area.hidden { display: none; }
+.export-btn {
+  width: 100%; padding: 13px;
+  background: var(--primary); border: none;
+  border-radius: 28px; color: #fff;
+  font-size: 14px; font-weight: 600;
+  font-family: var(--font); cursor: pointer;
+  transition: background .15s, transform .1s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.export-btn:hover { background: var(--primary-dark); }
+.export-btn:active { transform: scale(.98); }
 </style>
 </head>
 <body>
@@ -481,6 +527,28 @@ body {
     <div id="cfg-error" class="config-error">Por favor, preencha todos os campos.</div>
 
     <button class="btn-start" onclick="startBot()">Iniciar conversa →</button>
+    <a class="consulta-link" onclick="abrirConsulta()">Consultar protocolo</a>
+  </div>
+</div>
+
+<!-- Consultar protocolo overlay -->
+<div id="consulta-overlay" class="hidden">
+  <div class="config-card">
+    <div class="config-logo">Eletrofrio<span>Chat</span></div>
+    <div class="config-subtitle">Consulte o histórico de um atendimento pelo protocolo</div>
+
+    <div class="config-field">
+      <label>Protocolo</label>
+      <input id="consulta-protocolo" type="text" placeholder="EF-20260713-153000-123"
+        autocapitalize="characters" autocomplete="off"
+        oninput="this.value=this.value.toUpperCase()"
+        onkeydown="if(event.key==='Enter'){ event.preventDefault(); buscarProtocolo(); }" />
+    </div>
+
+    <div id="consulta-error" class="config-error">Protocolo não encontrado.</div>
+
+    <button class="btn-start" id="btn-buscar" onclick="buscarProtocolo()">Buscar →</button>
+    <button class="btn-back" onclick="fecharConsulta()">← Voltar</button>
   </div>
 </div>
 
@@ -515,6 +583,10 @@ body {
       <button id="send-btn" onclick="sendInput()" disabled aria-label="Enviar mensagem">↑</button>
     </div>
   </div>
+
+  <div id="export-area" class="hidden">
+    <button class="export-btn" onclick="exportarConversa()">⬇ Exportar conversa (.txt)</button>
+  </div>
 </div>
 
 <script type="module">
@@ -540,6 +612,7 @@ const _db = getFirestore(_fbApp);
 let nodes       = [];
 let chatVars    = {};
 let protocolo   = null;
+let historicoAtual = null; // guarda os dados carregados na tela "Consultar protocolo"
 
 // ── Debug overlay visível na tela (sem precisar de DevTools) ──────────────
 // Para desativar: mude DBG_ENABLED para false
@@ -888,6 +961,208 @@ function shadeColor(hex, percent) {
 
 function openConfig() {
   document.getElementById('config-overlay').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONSULTAR PROTOCOLO (modo somente-leitura)
+// ═══════════════════════════════════════════════════════════
+function abrirConsulta() {
+  document.getElementById('config-overlay').classList.add('hidden');
+  document.getElementById('consulta-overlay').classList.remove('hidden');
+  const errEl = document.getElementById('consulta-error');
+  errEl.classList.remove('show');
+  const inp = document.getElementById('consulta-protocolo');
+  inp.value = '';
+  setTimeout(() => inp.focus(), 100);
+}
+
+function fecharConsulta() {
+  document.getElementById('consulta-overlay').classList.add('hidden');
+  document.getElementById('config-overlay').classList.remove('hidden');
+}
+
+async function buscarProtocolo() {
+  const inp   = document.getElementById('consulta-protocolo');
+  const errEl = document.getElementById('consulta-error');
+  const btn   = document.getElementById('btn-buscar');
+  const val   = inp.value.trim().toUpperCase();
+
+  errEl.classList.remove('show');
+
+  if (!/^EF-\d{8}-\d{6}-\d{3}$/.test(val)) {
+    errEl.textContent = 'Formato inválido. Ex: EF-20260713-153000-123';
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Buscando…';
+
+  try {
+    const res = await fetch('/chatbot/historico?protocolo=' + encodeURIComponent(val));
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = res.status === 404
+        ? 'Protocolo não encontrado. Verifique o número informado.'
+        : 'Erro ao consultar histórico. Tente novamente.';
+      errEl.classList.add('show');
+      return;
+    }
+
+    exibirHistorico(data);
+  } catch (err) {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+function exibirHistorico(data) {
+  historicoAtual = data;
+
+  document.getElementById('consulta-overlay').classList.add('hidden');
+  document.getElementById('config-overlay').classList.add('hidden');
+  document.getElementById('loading-screen').classList.add('hidden');
+
+  clearTimer();
+  botName      = 'Assistente Eletrofrio';
+  botAvatar    = null;
+  primaryColor = '#18ade8';
+  applyTheme();
+  applyIdentity();
+
+  document.getElementById('header-name').textContent = 'Protocolo ' + (data.protocolo || '');
+  const encerrado = data.status === 'finalizado';
+  const statusDot = document.querySelector('#chat-header .status-dot');
+  const statusTxt = document.querySelector('#chat-header .header-status span:last-child');
+  if (statusDot) { statusDot.style.background = encerrado ? '#a4a6b3' : '#3ecf8e'; statusDot.style.animation = encerrado ? 'none' : ''; }
+  if (statusTxt) statusTxt.textContent = encerrado ? 'Atendimento encerrado' : 'Em andamento';
+
+  const msgsEl = document.getElementById('messages');
+  msgsEl.innerHTML = '';
+
+  (data.mensagens || []).forEach(m => {
+    if (m.role === 'user') renderHistUserMsg(m.texto, m.hora);
+    else renderHistBotMsg(m.texto, m.hora);
+  });
+
+  if (!(data.mensagens || []).length) {
+    renderHistBotMsg('Nenhuma mensagem registrada para este protocolo ainda.', null);
+  }
+
+  document.getElementById('input-area').classList.add('hidden');
+  document.getElementById('export-area').classList.remove('hidden');
+  document.getElementById('app').classList.add('visible');
+
+  requestAnimationFrame(() => { msgsEl.scrollTop = msgsEl.scrollHeight; });
+}
+
+// Renderiza bolhas do histórico sem disparar salvarHistorico (modo somente-leitura)
+function renderHistBotMsg(text, hora) {
+  const row = document.createElement('div');
+  row.className = 'bubble-row bot';
+
+  const av = document.createElement('div');
+  av.className = 'bubble-avatar';
+  av.textContent = '🤖';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text || '';
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'bubble-time';
+  timeEl.textContent = formatHistTime(hora);
+
+  const col = document.createElement('div');
+  col.style.display = 'flex'; col.style.flexDirection = 'column';
+  col.appendChild(bubble);
+  col.appendChild(timeEl);
+
+  row.appendChild(av);
+  row.appendChild(col);
+  document.getElementById('messages').appendChild(row);
+}
+
+function renderHistUserMsg(text, hora) {
+  const row = document.createElement('div');
+  row.className = 'bubble-row user';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.textContent = text || '';
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'bubble-time';
+  timeEl.textContent = formatHistTime(hora);
+
+  const col = document.createElement('div');
+  col.style.display = 'flex'; col.style.flexDirection = 'column';
+  col.style.alignItems = 'flex-end';
+  col.style.maxWidth = 'min(72vw, 520px)';
+  col.appendChild(bubble);
+  col.appendChild(timeEl);
+
+  const av = document.createElement('div');
+  av.className = 'bubble-avatar ghost';
+
+  row.appendChild(col);
+  row.appendChild(av);
+  document.getElementById('messages').appendChild(row);
+}
+
+function formatHistTime(iso) {
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+  catch { return ''; }
+}
+
+function formatHistDateTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('pt-BR'); }
+  catch { return String(iso); }
+}
+
+function exportarConversa() {
+  if (!historicoAtual) return;
+  const d = historicoAtual;
+
+  const linhas = [];
+  linhas.push('ELETROFRIO CHAT — HISTÓRICO DE ATENDIMENTO');
+  linhas.push('='.repeat(50));
+  linhas.push('Protocolo:      ' + (d.protocolo  || '—'));
+  linhas.push('Nome:           ' + (d.userName   || '—'));
+  linhas.push('Cargo:          ' + (d.userCargo  || '—'));
+  linhas.push('Telefone:       ' + (d.userPhone  || '—'));
+  if (d.pedido)  linhas.push('Pedido:         ' + d.pedido);
+  if (d.cliente) linhas.push('Cliente:        ' + d.cliente);
+  linhas.push('Status:         ' + (d.status === 'finalizado' ? 'Encerrado' : 'Em andamento'));
+  linhas.push('Iniciado em:    ' + formatHistDateTime(d.iniciadoEm));
+  linhas.push('Atualizado em:  ' + formatHistDateTime(d.atualizadoEm));
+  linhas.push('='.repeat(50));
+  linhas.push('');
+
+  (d.mensagens || []).forEach(m => {
+    const quem = m.role === 'user' ? (d.userName || 'Usuário') : (d.protocolo ? 'Assistente' : 'Assistente');
+    linhas.push(`[${formatHistDateTime(m.hora)}] ${quem}:`);
+    linhas.push(m.texto || '');
+    linhas.push('');
+  });
+
+  const conteudo = linhas.join('\n');
+  const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `conversa_${d.protocolo || 'protocolo'}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1406,6 +1681,10 @@ function hexToRgb(hex) {
 window.startBot    = startBot;
 window.openConfig  = openConfig;
 window.sendInput   = sendInput;
+window.abrirConsulta     = abrirConsulta;
+window.fecharConsulta    = fecharConsulta;
+window.buscarProtocolo   = buscarProtocolo;
+window.exportarConversa  = exportarConversa;
 
 // ── PWA: banner "Adicionar à tela inicial" ──────────────────
 // No Android (Chrome): captura o evento beforeinstallprompt

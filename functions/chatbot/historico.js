@@ -29,6 +29,44 @@ export async function onRequestOptions() {
   return new Response(null, { headers: corsHeaders() });
 }
 
+// GET /chatbot/historico?protocolo=EF-AAAAMMDD-HHMMSS-XXX
+// Usado pela tela "Consultar protocolo" da interface.html. Como a coleção
+// "Historico" é fechada para leitura pública nas regras do Firestore, esta
+// rota lê o documento usando a mesma Service Account (Admin) já usada para
+// gravação, e devolve só os campos necessários para montar a conversa.
+export async function onRequestGet({ request, env }) {
+  try {
+    const url = new URL(request.url);
+    const protocolo = (url.searchParams.get('protocolo') || '').trim().toUpperCase();
+
+    if (!PROTOCOLO_RE.test(protocolo)) {
+      return jsonResponse({ error: 'protocolo inválido' }, 400);
+    }
+
+    const accessToken = await getAccessToken(env);
+    const getUrl = `https://firestore.googleapis.com/v1/${docName(env, `Historico/${protocolo}`)}`;
+
+    const res = await fetch(getUrl, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+
+    if (res.status === 404) {
+      return jsonResponse({ error: 'Protocolo não encontrado' }, 404);
+    }
+    if (!res.ok) {
+      throw new Error(`Firestore get falhou (${res.status}): ${await res.text()}`);
+    }
+
+    const doc = await res.json();
+    const data = fsFieldsToPlain(doc.fields || {});
+
+    return jsonResponse({ ok: true, protocolo, ...data });
+  } catch (err) {
+    console.error('[historico] erro GET:', err);
+    return jsonResponse({ error: 'Falha ao consultar histórico' }, 500);
+  }
+}
+
 export async function onRequestPost({ request, env }) {
   try {
     const body = await request.json();
@@ -134,6 +172,30 @@ function docName(env, path) {
 
 function fsString(v) {
   return { stringValue: String(v) };
+}
+
+// Converte o formato de "fields" do Firestore REST API (stringValue,
+// mapValue, arrayValue, etc.) para um objeto JS simples, para devolver
+// ao front-end como JSON comum.
+function fsFieldsToPlain(fields) {
+  const out = {};
+  for (const [key, val] of Object.entries(fields)) {
+    out[key] = fsValueToPlain(val);
+  }
+  return out;
+}
+
+function fsValueToPlain(val) {
+  if (!val) return null;
+  if (val.stringValue !== undefined)  return val.stringValue;
+  if (val.integerValue !== undefined) return parseInt(val.integerValue, 10);
+  if (val.doubleValue !== undefined)  return val.doubleValue;
+  if (val.booleanValue !== undefined) return val.booleanValue;
+  if (val.timestampValue !== undefined) return val.timestampValue;
+  if (val.nullValue !== undefined)    return null;
+  if (val.arrayValue !== undefined)   return (val.arrayValue.values || []).map(fsValueToPlain);
+  if (val.mapValue !== undefined)     return fsFieldsToPlain(val.mapValue.fields || {});
+  return null;
 }
 
 async function firestoreCommit(env, accessToken, writes) {
