@@ -539,6 +539,7 @@ const _db = getFirestore(_fbApp);
 // ═══════════════════════════════════════════════════════════
 let nodes       = [];
 let chatVars    = {};
+let protocolo   = null;
 
 // ── Debug overlay visível na tela (sem precisar de DevTools) ──────────────
 // Para desativar: mude DBG_ENABLED para false
@@ -805,6 +806,10 @@ async function startBot() {
   chatVars.userPhone = userPhone;
   chatVars.telefone  = userPhone;
 
+  // Gera o protocolo desta conversa e disponibiliza como {{protocolo}} nos textos do fluxo
+  protocolo = generateProtocolo();
+  chatVars.protocolo = protocolo;
+
   // Injeta variáveis vindas da URL (ex: ?pedido=11805424&cliente=Supermercado+Silva)
   const _urlParams = new URLSearchParams(window.location.search);
   if (_urlParams.get('pedido'))  chatVars.pedido  = _urlParams.get('pedido');
@@ -836,6 +841,15 @@ async function startBot() {
 
   document.getElementById('loading-screen').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
+
+  salvarHistorico('inicio', {
+    userName:  chatVars.userName,
+    userCargo: chatVars.userCargo,
+    userPhone: chatVars.userPhone,
+    pedido:    chatVars.pedido  || '',
+    cliente:   chatVars.cliente || ''
+  });
+
   startConversation();
 }
 
@@ -881,7 +895,7 @@ function openConfig() {
 // ═══════════════════════════════════════════════════════════
 function startConversation() {
   // Preserve user identification across restarts
-  const preserved = { userName: chatVars.userName, userCargo: chatVars.userCargo, userPhone: chatVars.userPhone, telefone: chatVars.telefone, pedido: chatVars.pedido, cliente: chatVars.cliente, nome: chatVars.nome };
+  const preserved = { userName: chatVars.userName, userCargo: chatVars.userCargo, userPhone: chatVars.userPhone, telefone: chatVars.telefone, pedido: chatVars.pedido, cliente: chatVars.cliente, nome: chatVars.nome, protocolo: chatVars.protocolo };
   chatVars = { ...preserved }; awaitingInput = false; currentNodeId = null;
   clearTimer();
   document.getElementById('messages').innerHTML = '';
@@ -919,6 +933,7 @@ async function runNode(id) {
   // ── end ──
   if (n.type === 'end') {
     if (n.content) addBotMsg(interpolate(n.content));
+    salvarHistorico('fim', {});
     return;
   }
 
@@ -1211,6 +1226,9 @@ function addBotMsg(text, isTyping = false) {
   row.appendChild(av);
   row.appendChild(col);
   appendToMessages(row);
+
+  if (!isTyping && text) salvarHistorico('mensagem', { role: 'bot', texto: text });
+
   return row;
 }
 
@@ -1239,6 +1257,8 @@ function addUserMsg(text) {
   row.appendChild(col);
   row.appendChild(av);
   appendToMessages(row);
+
+  if (text) salvarHistorico('mensagem', { role: 'user', texto: text });
 }
 
 function addHubDivider(label) {
@@ -1258,6 +1278,32 @@ function appendToMessages(el) {
   requestAnimationFrame(() => {
     c.scrollTop = c.scrollHeight;
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROTOCOLO & HISTÓRICO
+// ═══════════════════════════════════════════════════════════
+// Gera um protocolo único baseado em timestamp: EF-AAAAMMDD-HHMMSS-XXX
+// (XXX = sufixo aleatório de 3 dígitos, evita colisão sem precisar de contador)
+function generateProtocolo() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const data = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+  const hora = `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+  return `EF-${data}-${hora}-${rand}`;
+}
+
+// Envia eventos ao endpoint (Cloudflare Pages Function) que grava no Firestore.
+// "fire-and-forget": não trava a conversa se a rede falhar — o chat continua
+// funcionando normalmente mesmo se o histórico não puder ser salvo no momento.
+function salvarHistorico(tipo, dados) {
+  if (!protocolo) return;
+  fetch('/chatbot/historico', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ protocolo, tipo, ...dados })
+  }).catch((err) => console.warn('[Histórico] Falha ao salvar (' + tipo + '):', err));
 }
 
 // ═══════════════════════════════════════════════════════════
