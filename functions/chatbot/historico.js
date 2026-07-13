@@ -20,44 +20,13 @@
 //   "Gerar nova chave privada" → baixa um JSON com client_email e private_key.
 
 const FIRESTORE_SCOPE = 'https://www.googleapis.com/auth/datastore';
-const PROTOCOLO_RE = /^\d{8}-\d{6}-\d{3}$/;
+const PROTOCOLO_RE = /^EF-\d{8}-\d{6}-\d{3}$/;
 const TEXTO_MAX = 4000;
 
 let _cachedToken = null; // { token, exp } — reaproveitado enquanto o isolate da Function viver
 
 export async function onRequestOptions() {
   return new Response(null, { headers: corsHeaders() });
-}
-
-// GET /chatbot/historico?protocolo=AAAAMMDD-HHMMSS-XXX
-// Usado pela própria interface do chat (menu "Consultar protocolo") para que
-// o cliente veja o histórico da conversa ou a situação do atendimento depois.
-export async function onRequestGet({ request, env }) {
-  try {
-    const url = new URL(request.url);
-    const protocolo = url.searchParams.get('protocolo') || '';
-
-    if (!PROTOCOLO_RE.test(protocolo)) {
-      return jsonResponse({ error: 'protocolo inválido' }, 400);
-    }
-
-    const accessToken = await getAccessToken(env);
-    const docUrl = `https://firestore.googleapis.com/v1/${docName(env, `Historico/${protocolo}`)}`;
-    const res = await fetch(docUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-    if (res.status === 404) {
-      return jsonResponse({ error: 'não encontrado' }, 404);
-    }
-    if (!res.ok) {
-      throw new Error(`Firestore get falhou (${res.status}): ${await res.text()}`);
-    }
-
-    const doc = await res.json();
-    return jsonResponse(decodeFirestoreDoc(doc));
-  } catch (err) {
-    console.error('[historico][GET] erro:', err);
-    return jsonResponse({ error: 'Falha ao consultar histórico' }, 500);
-  }
 }
 
 export async function onRequestPost({ request, env }) {
@@ -88,7 +57,7 @@ export async function onRequestPost({ request, env }) {
               pedido:     fsString(body.pedido    || ''),
               cliente:    fsString(body.cliente   || ''),
               status:     fsString('em_andamento'),
-              z_mensagens: { arrayValue: { values: [] } }
+              mensagens:  { arrayValue: { values: [] } }
             }
           }
         },
@@ -115,7 +84,7 @@ export async function onRequestPost({ request, env }) {
             document: docName(env, docPath),
             fieldTransforms: [
               {
-                fieldPath: 'z_mensagens',
+                fieldPath: 'mensagens',
                 appendMissingElements: {
                   values: [{
                     mapValue: {
@@ -161,32 +130,6 @@ export async function onRequestPost({ request, env }) {
 
 function docName(env, path) {
   return `projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}`;
-}
-
-// Converte o formato { fields: { chave: { stringValue: ... } } } do REST do
-// Firestore para um objeto JS simples, incluindo arrays de mensagens.
-function decodeFirestoreDoc(doc) {
-  const out = {};
-  const fields = doc.fields || {};
-  for (const key in fields) out[key] = decodeValue(fields[key]);
-  return out;
-}
-
-function decodeValue(v) {
-  if (v.stringValue    !== undefined) return v.stringValue;
-  if (v.integerValue    !== undefined) return Number(v.integerValue);
-  if (v.doubleValue    !== undefined) return v.doubleValue;
-  if (v.booleanValue    !== undefined) return v.booleanValue;
-  if (v.timestampValue  !== undefined) return v.timestampValue;
-  if (v.nullValue      !== undefined) return null;
-  if (v.arrayValue     !== undefined) return (v.arrayValue.values || []).map(decodeValue);
-  if (v.mapValue        !== undefined) {
-    const obj = {};
-    const f = v.mapValue.fields || {};
-    for (const k in f) obj[k] = decodeValue(f[k]);
-    return obj;
-  }
-  return null;
 }
 
 function fsString(v) {

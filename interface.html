@@ -120,70 +120,6 @@ body {
 }
 .config-error.show { display: block; }
 
-/* ── Consulta de protocolo ── */
-.config-link {
-  text-align: center; font-size: 12.5px; color: var(--primary);
-  margin-top: 16px; cursor: pointer; font-weight: 500;
-}
-.config-link:hover { text-decoration: underline; }
-
-.menu-card {
-  background: var(--bg2); border: 1px solid var(--border-hi);
-  border-radius: 24px; padding: 36px 40px;
-  width: 100%; max-width: 480px; box-shadow: var(--shadow);
-}
-.menu-btn {
-  width: 100%; display: flex; align-items: center; gap: 12px;
-  padding: 16px 18px; margin-bottom: 12px;
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); cursor: pointer;
-  font-family: var(--font); text-align: left; transition: all .15s;
-}
-.menu-btn:hover { border-color: var(--primary); background: var(--primary-light); }
-.menu-btn-icon { font-size: 20px; flex-shrink: 0; }
-.menu-btn-text { flex: 1; }
-.menu-btn-title { font-size: 14px; font-weight: 600; color: var(--text); }
-.menu-btn-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
-
-.lookup-result { margin-top: 18px; }
-.lookup-error {
-  font-size: 12px; color: #f06060; margin-top: 8px; padding: 8px 12px;
-  background: rgba(240,96,96,0.08); border-radius: var(--radius-xs);
-  border: 1px solid rgba(240,96,96,0.2); display: none;
-}
-.lookup-error.show { display: block; }
-
-.status-card {
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 6px 18px;
-}
-.status-row {
-  display: flex; justify-content: space-between; gap: 10px;
-  padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
-}
-.status-row:last-child { border-bottom: none; }
-.status-row-label { color: var(--text2); flex-shrink: 0; }
-.status-row-value { color: var(--text); font-weight: 600; text-align: right; }
-.status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.status-badge.em_andamento { background: rgba(24,173,232,0.12); color: var(--primary-dark); }
-.status-badge.finalizado   { background: rgba(62,207,142,0.12); color: #2a9e6e; }
-
-/* ── Barra somente-leitura (histórico carregado no chat) ── */
-#readonly-bar {
-  padding: 14px 20px; padding-bottom: calc(18px + env(safe-area-inset-bottom));
-  flex-shrink: 0; background: var(--bg2); border-top: 1px solid var(--border);
-  display: none; gap: 10px;
-}
-#readonly-bar.visible { display: flex; }
-.readonly-btn {
-  flex: 1; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--bg3); color: var(--text); font-size: 13px; font-weight: 600;
-  font-family: var(--font); cursor: pointer; transition: all .15s;
-}
-.readonly-btn:hover { border-color: var(--primary); }
-.readonly-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-.readonly-btn.primary:hover { background: var(--primary-dark); }
-
 .config-field.field-error input {
   border-color: #f06060;
   background: rgba(240,96,96,0.05);
@@ -545,52 +481,6 @@ body {
     <div id="cfg-error" class="config-error">Por favor, preencha todos os campos.</div>
 
     <button class="btn-start" onclick="startBot()">Iniciar conversa →</button>
-    <div class="config-link" onclick="openProtocolMenu()">Já iniciou um atendimento? Consultar protocolo</div>
-  </div>
-</div>
-
-<!-- Menu de consulta de protocolo -->
-<div id="protocol-menu-overlay" class="hidden" style="position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;">
-  <div class="menu-card">
-    <div class="config-logo">Consultar<span>Atendimento</span></div>
-    <div class="config-subtitle">O que você deseja consultar?</div>
-
-    <div class="menu-btn" onclick="openProtocolLookup('historico')">
-      <div class="menu-btn-icon">📜</div>
-      <div class="menu-btn-text">
-        <div class="menu-btn-title">Histórico da conversa</div>
-        <div class="menu-btn-sub">Ver as mensagens trocadas nesse atendimento</div>
-      </div>
-    </div>
-
-    <div class="menu-btn" onclick="openProtocolLookup('status')">
-      <div class="menu-btn-icon">📋</div>
-      <div class="menu-btn-text">
-        <div class="menu-btn-title">Situação do atendimento</div>
-        <div class="menu-btn-sub">Ver se o atendimento já foi finalizado</div>
-      </div>
-    </div>
-
-    <div class="config-link" onclick="closeProtocolMenu()">← Voltar</div>
-  </div>
-</div>
-
-<!-- Busca por protocolo -->
-<div id="protocol-lookup-overlay" class="hidden" style="position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
-  <div class="menu-card">
-    <div class="config-logo" id="lookup-title">Consultar</div>
-    <div class="config-subtitle">Digite o número do protocolo</div>
-
-    <div class="config-field">
-      <label>Protocolo</label>
-      <input id="lookup-protocolo" type="text" placeholder="AAAAMMDD-HHMMSS-XXX" autocomplete="off" />
-    </div>
-
-    <button class="btn-start" id="lookup-btn" onclick="buscarProtocolo()">Buscar →</button>
-    <div id="lookup-error" class="lookup-error">Protocolo não encontrado.</div>
-    <div id="lookup-result" class="lookup-result"></div>
-
-    <div class="config-link" onclick="backToProtocolMenu()">← Voltar</div>
   </div>
 </div>
 
@@ -606,7 +496,7 @@ body {
     <div class="header-avatar" id="header-avatar">🤖</div>
     <div class="header-info">
       <div class="header-name" id="header-name">Assistente</div>
-      <div class="header-status" id="header-status">
+      <div class="header-status">
         <span class="status-dot"></span>
         <span>Online agora</span>
       </div>
@@ -624,11 +514,6 @@ body {
         onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendInput(); }">
       <button id="send-btn" onclick="sendInput()" disabled aria-label="Enviar mensagem">↑</button>
     </div>
-  </div>
-
-  <div id="readonly-bar">
-    <button class="readonly-btn" onclick="novaConsulta()">🔍 Nova consulta</button>
-    <button class="readonly-btn primary" onclick="baixarConversaTxt()">⬇ Baixar .txt</button>
   </div>
 </div>
 
@@ -655,10 +540,6 @@ const _db = getFirestore(_fbApp);
 let nodes       = [];
 let chatVars    = {};
 let protocolo   = null;
-let readOnlyMode      = false;
-let lookupMode         = 'historico'; // 'historico' | 'status'
-let loadedTranscript   = [];
-let loadedProtocolo    = null;
 
 // ── Debug overlay visível na tela (sem precisar de DevTools) ──────────────
 // Para desativar: mude DBG_ENABLED para false
@@ -904,7 +785,6 @@ function validateField(field, silent) {
 }
 
 async function startBot() {
-  readOnlyMode = false;
   const userName  = document.getElementById('cfg-user-name').value.trim();
   const userCargo = document.getElementById('cfg-user-cargo').value.trim();
   const userPhone = document.getElementById('cfg-user-phone').value.trim();
@@ -1316,7 +1196,7 @@ function showOrientation(n) {
 // ═══════════════════════════════════════════════════════════
 // MESSAGE RENDERING
 // ═══════════════════════════════════════════════════════════
-function addBotMsg(text, isTyping = false, horaOriginal = null) {
+function addBotMsg(text, isTyping = false) {
   const row = document.createElement('div');
   row.className = 'bubble-row bot';
 
@@ -1336,7 +1216,7 @@ function addBotMsg(text, isTyping = false, horaOriginal = null) {
 
   const timeEl = document.createElement('div');
   timeEl.className = 'bubble-time';
-  timeEl.textContent = horaOriginal ? formatHistoricoTime(horaOriginal) : nowTime();
+  timeEl.textContent = nowTime();
 
   const col = document.createElement('div');
   col.style.display = 'flex'; col.style.flexDirection = 'column';
@@ -1347,12 +1227,12 @@ function addBotMsg(text, isTyping = false, horaOriginal = null) {
   row.appendChild(col);
   appendToMessages(row);
 
-  if (!isTyping && text && !readOnlyMode) salvarHistorico('mensagem', { role: 'bot', texto: text });
+  if (!isTyping && text) salvarHistorico('mensagem', { role: 'bot', texto: text });
 
   return row;
 }
 
-function addUserMsg(text, horaOriginal = null) {
+function addUserMsg(text) {
   const row = document.createElement('div');
   row.className = 'bubble-row user';
 
@@ -1362,7 +1242,7 @@ function addUserMsg(text, horaOriginal = null) {
 
   const timeEl = document.createElement('div');
   timeEl.className = 'bubble-time';
-  timeEl.textContent = horaOriginal ? formatHistoricoTime(horaOriginal) : nowTime();
+  timeEl.textContent = nowTime();
 
   const col = document.createElement('div');
   col.style.display = 'flex'; col.style.flexDirection = 'column';
@@ -1378,10 +1258,8 @@ function addUserMsg(text, horaOriginal = null) {
   row.appendChild(av);
   appendToMessages(row);
 
-  if (text && !readOnlyMode) salvarHistorico('mensagem', { role: 'user', texto: text });
+  if (text) salvarHistorico('mensagem', { role: 'user', texto: text });
 }
-
-
 
 function addHubDivider(label) {
   const div = document.createElement('div');
@@ -1405,7 +1283,7 @@ function appendToMessages(el) {
 // ═══════════════════════════════════════════════════════════
 // PROTOCOLO & HISTÓRICO
 // ═══════════════════════════════════════════════════════════
-// Gera um protocolo único baseado em timestamp: AAAAMMDD-HHMMSS-XXX
+// Gera um protocolo único baseado em timestamp: EF-AAAAMMDD-HHMMSS-XXX
 // (XXX = sufixo aleatório de 3 dígitos, evita colisão sem precisar de contador)
 function generateProtocolo() {
   const d = new Date();
@@ -1413,7 +1291,7 @@ function generateProtocolo() {
   const data = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
   const hora = `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-  return `${data}-${hora}-${rand}`;
+  return `EF-${data}-${hora}-${rand}`;
 }
 
 // Envia eventos ao endpoint (Cloudflare Pages Function) que grava no Firestore.
@@ -1426,142 +1304,6 @@ function salvarHistorico(tipo, dados) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ protocolo, tipo, ...dados })
   }).catch((err) => console.warn('[Histórico] Falha ao salvar (' + tipo + '):', err));
-}
-
-// ── Menu de consulta (Histórico da conversa / Situação do atendimento) ──
-function openProtocolMenu() {
-  document.getElementById('config-overlay').classList.add('hidden');
-  document.getElementById('protocol-menu-overlay').classList.remove('hidden');
-}
-function closeProtocolMenu() {
-  document.getElementById('protocol-menu-overlay').classList.add('hidden');
-  document.getElementById('config-overlay').classList.remove('hidden');
-}
-function openProtocolLookup(mode) {
-  lookupMode = mode;
-  document.getElementById('protocol-menu-overlay').classList.add('hidden');
-  document.getElementById('protocol-lookup-overlay').classList.remove('hidden');
-  document.getElementById('lookup-title').innerHTML = mode === 'historico'
-    ? 'Histórico<span> da conversa</span>'
-    : 'Situação<span> do atendimento</span>';
-  document.getElementById('lookup-protocolo').value = '';
-  document.getElementById('lookup-error').classList.remove('show');
-  document.getElementById('lookup-result').innerHTML = '';
-}
-function backToProtocolMenu() {
-  document.getElementById('protocol-lookup-overlay').classList.add('hidden');
-  document.getElementById('protocol-menu-overlay').classList.remove('hidden');
-}
-
-async function buscarProtocolo() {
-  const input        = document.getElementById('lookup-protocolo');
-  const protocoloBuscado = input.value.trim();
-  const errEl    = document.getElementById('lookup-error');
-  const resultEl = document.getElementById('lookup-result');
-  errEl.classList.remove('show');
-  resultEl.innerHTML = '';
-
-  if (!/^\d{8}-\d{6}-\d{3}$/.test(protocoloBuscado)) {
-    errEl.textContent = 'Formato de protocolo inválido. Confira o número informado.';
-    errEl.classList.add('show');
-    return;
-  }
-
-  const btn = document.getElementById('lookup-btn');
-  btn.disabled = true; btn.textContent = 'Buscando…';
-
-  try {
-    const res = await fetch('/chatbot/historico?protocolo=' + encodeURIComponent(protocoloBuscado));
-    if (res.status === 404) {
-      errEl.textContent = 'Protocolo não encontrado. Confira o número e tente novamente.';
-      errEl.classList.add('show');
-      return;
-    }
-    if (!res.ok) throw new Error('Erro na consulta (' + res.status + ')');
-    const dados = await res.json();
-
-    if (lookupMode === 'status') renderStatusCard(dados);
-    else loadHistoricoIntoChat(dados);
-  } catch (err) {
-    console.error('[Consulta] erro:', err);
-    errEl.textContent = 'Não foi possível consultar agora. Tente novamente em instantes.';
-    errEl.classList.add('show');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Buscar →';
-  }
-}
-
-function renderStatusCard(dados) {
-  const statusLabel = dados.status === 'finalizado' ? 'Finalizado' : 'Em andamento';
-  const fmt = (iso) => iso ? new Date(iso).toLocaleString('pt-BR') : '—';
-  document.getElementById('lookup-result').innerHTML = `
-    <div class="status-card">
-      <div class="status-row"><span class="status-row-label">Protocolo</span><span class="status-row-value">${dados.protocolo || '—'}</span></div>
-      <div class="status-row"><span class="status-row-label">Situação</span><span class="status-row-value"><span class="status-badge ${dados.status}">${statusLabel}</span></span></div>
-      <div class="status-row"><span class="status-row-label">Cliente</span><span class="status-row-value">${dados.cliente || '—'}</span></div>
-      <div class="status-row"><span class="status-row-label">Pedido</span><span class="status-row-value">${dados.pedido || '—'}</span></div>
-      <div class="status-row"><span class="status-row-label">Iniciado em</span><span class="status-row-value">${fmt(dados.iniciadoEm)}</span></div>
-      <div class="status-row"><span class="status-row-label">Última atualização</span><span class="status-row-value">${fmt(dados.atualizadoEm)}</span></div>
-    </div>`;
-}
-
-// ── Carrega o histórico dentro do próprio chat, em modo somente-leitura ──
-function loadHistoricoIntoChat(dados) {
-  loadedTranscript = dados.z_mensagens || [];
-  loadedProtocolo  = dados.protocolo;
-  readOnlyMode     = true;
-
-  document.getElementById('protocol-lookup-overlay').classList.add('hidden');
-  document.getElementById('protocol-menu-overlay').classList.add('hidden');
-  document.getElementById('config-overlay').classList.add('hidden');
-  document.getElementById('input-area').style.display = 'none';
-  document.getElementById('readonly-bar').classList.add('visible');
-  document.getElementById('messages').innerHTML = '';
-
-  botName = 'Assistente Eletrofrio'; botAvatar = null; primaryColor = '#18ade8';
-  applyTheme();
-  applyIdentity();
-  document.getElementById('header-status').innerHTML = `<span style="color:var(--text2)">Histórico — ${loadedProtocolo}</span>`;
-  document.getElementById('app').classList.add('visible');
-
-  loadedTranscript.forEach((m) => {
-    if (m.role === 'user') addUserMsg(m.texto, m.hora);
-    else addBotMsg(m.texto, false, m.hora);
-  });
-}
-
-function novaConsulta() {
-  readOnlyMode = false;
-  loadedTranscript = [];
-  loadedProtocolo = null;
-  document.getElementById('app').classList.remove('visible');
-  document.getElementById('messages').innerHTML = '';
-  document.getElementById('readonly-bar').classList.remove('visible');
-  document.getElementById('input-area').style.display = '';
-  document.getElementById('header-status').innerHTML = '<span class="status-dot"></span><span>Online agora</span>';
-  document.getElementById('config-overlay').classList.remove('hidden');
-}
-
-function baixarConversaTxt() {
-  if (!loadedTranscript.length) return;
-  const linhas = [];
-  linhas.push('Eletrofrio — Histórico de atendimento');
-  linhas.push('Protocolo: ' + loadedProtocolo);
-  linhas.push('');
-  loadedTranscript.forEach((m) => {
-    const quem = m.role === 'user' ? 'Cliente' : 'Assistente';
-    const hora = m.hora ? new Date(m.hora).toLocaleString('pt-BR') : '';
-    linhas.push(`[${hora}] ${quem}: ${m.texto}`);
-  });
-  const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `historico-${loadedProtocolo}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1651,12 +1393,6 @@ function interpolate(text) {
 
 function nowTime() {
   return new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-}
-
-function formatHistoricoTime(iso) {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 }
 
 function hexToRgb(hex) {
