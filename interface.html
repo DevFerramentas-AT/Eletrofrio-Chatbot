@@ -1631,6 +1631,30 @@ async function callAI(prompt) {
 // ═══════════════════════════════════════════════════════════
 // CONDITION EVAL
 // ═══════════════════════════════════════════════════════════
+function parseDate(str) {
+  if (str === undefined || str === null) return null;
+  const raw = String(str).trim();
+  if (!raw) return null;
+  const s = raw.toLowerCase();
+  if (s === 'hoje' || s === 'today') {
+    const d = new Date(); d.setHours(0,0,0,0); return d;
+  }
+  // DD/MM/YYYY (aceita dia/mês com 1 ou 2 dígitos, ignora hora se vier junto)
+  const dmyMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmyMatch) {
+    const d = new Date(+dmyMatch[3], +dmyMatch[2]-1, +dmyMatch[1]);
+    return isNaN(d) ? null : d;
+  }
+  // YYYY-MM-DD (com ou sem hora/timezone), tratado como data local
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const d = new Date(+isoMatch[1], +isoMatch[2]-1, +isoMatch[3]);
+    return isNaN(d) ? null : d;
+  }
+  const d = new Date(raw);
+  return isNaN(d) ? null : d;
+}
+
 function evalCondRule(rule, vars) {
   const a = vars[rule.varA] !== undefined ? String(vars[rule.varA]) : '';
   const b = rule.compareType === 'variable'
@@ -1651,6 +1675,13 @@ function evalCondRule(rule, vars) {
   if (op === 'lte')         return parseFloat(a) <= parseFloat(b);
   if (op === 'numEq')       return parseFloat(a) === parseFloat(b);
   if (op === 'numNeq')      return parseFloat(a) !== parseFloat(b);
+  if (op === 'dateEq' || op === 'dateBefore' || op === 'dateAfter') {
+    const dA = parseDate(a), dB = parseDate(b);
+    if (!dA || !dB) return false;
+    if (op === 'dateEq')     return dA.getTime() === dB.getTime();
+    if (op === 'dateBefore') return dA.getTime() < dB.getTime();
+    if (op === 'dateAfter')  return dA.getTime() > dB.getTime();
+  }
   return false;
 }
 
